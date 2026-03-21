@@ -1,5 +1,5 @@
 /**
- * Exercise 05: The Dependency Contract — SOLUTIONS
+ * Exercise 06: The Dependency Contract — SOLUTIONS
  * ==================================================
  */
 
@@ -11,6 +11,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Solution A: Playlist context with stable selectTrack
@@ -73,66 +75,7 @@ export const Playlist: FunctionComponent<PlaylistProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: AccordionSection with complete deps
-//
-// Two options:
-// 1. Add all dependencies (verbose but correct)
-// 2. Move stable functions outside the component and skip useCallback
-//
-// We choose option 2 for scrollToPanel (doesn't depend on props/state)
-// and add the remaining deps.
-// ---------------------------------------------------------------------------
-
-type PanelAction = { type: "open" | "close"; panel: string };
-
-// Moved outside — doesn't use any props or state
-const scrollToPanel = (id: string) => {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-};
-
-export const AccordionSection: FunctionComponent<{
-  panelId: string;
-  isOpen: boolean;
-  dispatch: (action: PanelAction) => void;
-  onOpenChanged?: (open: boolean) => void;
-  labelText?: string;
-}> = ({ panelId, isOpen, dispatch, onOpenChanged, labelText }) => {
-  // log uses labelText from closure — kept inside but no useCallback needed
-  // because handleToggle already depends on labelText
-  const handleToggle = useCallback(
-    (newOpen: boolean) => () => {
-      onOpenChanged?.(newOpen);
-      dispatch(
-        newOpen
-          ? { type: "open", panel: panelId }
-          : { type: "close", panel: panelId },
-      );
-
-      if (!newOpen) {
-        scrollToPanel(panelId);
-      }
-
-      if (labelText) {
-        console.log(`[Log] ${newOpen ? "open" : "close"} for ${labelText}`);
-      }
-    },
-    // All deps listed — dispatch is stable (from useReducer), onOpenChanged
-    // may change. The linter is happy.
-    [labelText, panelId, dispatch, onOpenChanged],
-  );
-
-  return (
-    <div>
-      <p>{isOpen ? "Expanded content" : "Collapsed content"}</p>
-      <button onClick={handleToggle(!isOpen)}>
-        {isOpen ? "Show less" : "Show more"}
-      </button>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Solution C: ActivityFeed — fix the infinite loop
+// Solution B: ActivityFeed — fix the infinite loop
 //
 // The object in the dependency array was recreated every render.
 // Fix: destructure into primitive values for the dependency array.
@@ -147,6 +90,7 @@ interface FeedEntry {
 export const ActivityFeed: FunctionComponent<{
   channelId: string;
 }> = ({ channelId }) => {
+  const renderCount = useRenderCount();
   const [entries, setEntries] = useState<FeedEntry[]>([]);
 
   // Option 1: Use primitive values in the dep array (preferred)
@@ -172,6 +116,7 @@ export const ActivityFeed: FunctionComponent<{
 
   return (
     <div>
+      <RenderCount count={renderCount} />
       {entries.map((entry) => (
         <p key={entry.id}>{entry.text}</p>
       ))}

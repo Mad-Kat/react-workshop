@@ -5,16 +5,16 @@
  * Mental model: A custom hook wraps and owns a piece of reactive synchronization.
  * It encapsulates setup, teardown, and state management into a reusable unit.
  *
- * These are patterns found in our codebase.
- *
- * Exercise: Extract tangled WebSocket logic into a clean custom hook.
+ * FORMAT: Build from scratch
+ * You are given: the FakeWebSocket, the hook interface, and the consumer component.
+ * You implement: useWebSocket — a custom hook that manages the full WebSocket lifecycle.
  */
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Fake WebSocket (read but don't modify)
+// PROVIDED: Fake WebSocket (don't modify)
 // ---------------------------------------------------------------------------
 
 interface FakeWebSocket {
@@ -79,95 +79,107 @@ function createFakeWebSocket(url: string): FakeWebSocket {
 }
 
 // ---------------------------------------------------------------------------
-// Exercise: Tangled WebSocket Component
+// Exercise: Implement useWebSocket
 //
-// This component has ALL the WebSocket logic inline — multiple effects, multiple
-// state variables, reconnection logic. It works, but it's unmaintainable and
-// not reusable.
+// Build a custom hook that manages the full WebSocket lifecycle.
 //
-// TODO: Extract into a `useWebSocket(url)` hook that returns:
-//   { status: "connecting" | "open" | "closed", lastMessage: string | null, send: (data: string) => void }
+// Interface:
+//   function useWebSocket(url: string): {
+//     status: "connecting" | "open" | "closed";
+//     lastMessage: string | null;
+//     send: (data: string) => void;
+//   }
 //
 // Requirements:
 //   1. Single effect for connect/disconnect lifecycle
-//   2. `send` should be a stable function (use ref pattern)
-//   3. Reconnection with exponential backoff on error
-//   4. All cleanup handled internally — consumer just calls the hook
+//      - Call createFakeWebSocket(url) to connect
+//      - Set up onopen, onmessage, onerror, onclose handlers
+//      - Clean up on unmount (close the socket)
+//
+//   2. Reconnection with exponential backoff on error/close
+//      - When onclose fires, schedule a reconnect after a delay
+//      - Delay = min(1000 * 2^retryCount, 30000) — exponential, capped at 30s
+//      - Reset retry count on successful connection
+//      - IMPORTANT: use a ref for retryCount, not state (why?)
+//
+//   3. Stable `send` function
+//      - `send` should not change identity across renders
+//      - Use the "ref-updated-on-render" pattern:
+//        a. Create a ref (sendImplRef) that holds the latest send implementation
+//        b. Update sendImplRef.current on every render with the latest closure
+//        c. Return a stable wrapper (useCallback with [] deps) that delegates to sendImplRef
+//
+//   4. Clean cleanup
+//      - When the effect cleans up (unmount or url change), don't reconnect
+//      - Null out ws.onclose BEFORE calling ws.close() — otherwise close()
+//        fires onclose synchronously, which schedules a reconnect during cleanup
+//      - Use a `destroyed` flag to prevent async callbacks from firing after cleanup
+//
+// Hints:
+//   - Only `status` and `lastMessage` should be React state (they drive renders)
+//   - wsRef, retryCountRef, retryTimeoutRef should all be refs (no re-renders)
+//   - Define a `connect()` function INSIDE the effect, call it immediately,
+//     and call it again from onclose for reconnection
+// ---------------------------------------------------------------------------
+
+type ConnectionStatus = "connecting" | "open" | "closed";
+
+interface UseWebSocketResult {
+  status: ConnectionStatus;
+  lastMessage: string | null;
+  send: (data: string) => void;
+}
+
+function useWebSocket(url: string): UseWebSocketResult {
+  const [status, setStatus] = useState<ConnectionStatus>("connecting");
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
+
+  // TODO: implement the hook
+  // Hints:
+  //   const wsRef = useRef<FakeWebSocket | null>(null);
+  //   const retryCountRef = useRef(0);
+  //   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  //   const sendImplRef = useRef<(data: string) => void>(() => {});
+
+  const send = useCallback((_data: string) => {
+    // TODO: delegate to sendImplRef.current
+  }, []);
+
+  return { status, lastMessage, send };
+}
+
+// ---------------------------------------------------------------------------
+// PROVIDED: Consumer component (don't modify)
+//
+// This component uses your hook. It tracks message history locally
+// and provides a send input. The hook only needs to expose status,
+// lastMessage, and send.
 // ---------------------------------------------------------------------------
 
 export const LiveFeed: FunctionComponent = () => {
-  const [status, setStatus] = useState<"connecting" | "open" | "closed">("connecting");
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
+  const { status, lastMessage, send } = useWebSocket("wss://fake.example.com/feed");
   const [messages, setMessages] = useState<string[]>([]);
-  const [retryCount, setRetryCount] = useState(0);
   const [inputValue, setInputValue] = useState("");
-  const wsRef = useRef<FakeWebSocket | null>(null);
-  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const url = "wss://fake.example.com/feed";
-
-  // Effect 1: Connect/disconnect
-  // Bug: retryCount in deps causes a reconnect cascade — every retry schedules
-  // another reconnect, which triggers the effect again immediately.
+  // Track full message history in the component — the hook exposes only lastMessage
   useEffect(() => {
-    const ws = createFakeWebSocket(url);
-    wsRef.current = ws;
-    setStatus("connecting");
-
-    ws.onopen = () => {
-      setStatus("open");
-      setRetryCount(0);
-    };
-
-    ws.onmessage = (event) => {
-      setLastMessage(event.data);
-      setMessages((prev) => [...prev.slice(-49), event.data]);
-    };
-
-    ws.onerror = () => {
-      setStatus("closed");
-    };
-
-    ws.onclose = () => {
-      setStatus("closed");
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [url, retryCount]); // Bug: retryCount in deps causes reconnect cascade
-
-  // Effect 2: Reconnection with backoff
-  // Bug: this effect reads retryCount from state, causing a cascade with Effect 1
-  useEffect(() => {
-    if (status === "closed") {
-      const delay = Math.min(1000 * 2 ** retryCount, 30000);
-      retryTimeoutRef.current = setTimeout(() => {
-        setRetryCount((c) => c + 1);
-      }, delay);
-
-      return () => {
-        if (retryTimeoutRef.current) {
-          clearTimeout(retryTimeoutRef.current);
-        }
-      };
+    if (lastMessage) {
+      setMessages((prev) => [...prev.slice(-49), lastMessage]);
     }
-  }, [status, retryCount]);
+  }, [lastMessage]);
 
-  // Send function — not stable! Recreated every render.
-  const handleSend = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === OPEN && inputValue) {
-      wsRef.current.send(inputValue);
+  const handleSend = () => {
+    if (inputValue) {
+      send(inputValue);
       setInputValue("");
     }
-  }, [inputValue]);
+  };
 
   return (
     <div>
       <h1>Live Feed</h1>
       <div>
         Status: <strong>{status}</strong>
-        {status === "closed" && ` (retry #${retryCount})`}
       </div>
 
       <div style={{ marginTop: 8 }}>
@@ -193,19 +205,6 @@ export const LiveFeed: FunctionComponent = () => {
           {messages.length === 0 && <div style={{ color: "#999" }}>No messages yet</div>}
         </div>
       </div>
-
-      <div style={{ marginTop: 8, color: "#999", fontSize: 12 }}>
-        Last message: {lastMessage ?? "none"}
-      </div>
     </div>
   );
 };
-
-/**
- * Hints (try without these first):
- *
- * 1. Single effect: schedule reconnection from INSIDE onclose, not a separate effect.
- * 2. Stable send: a ref that holds the latest send implementation + a stable wrapper.
- * 3. Backoff: increment a ref (not state) to avoid triggering re-renders.
- * 4. Cleanup: prevent onclose from firing reconnection when YOU close intentionally.
- */

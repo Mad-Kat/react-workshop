@@ -15,7 +15,7 @@
  * In our codebase:
  *   - `useTransition` is used in productListSerp.tsx for refetch transitions
  *   - `useOptimistic` replaces the manual `optimisticOverride ?? serverEnabled`
- *     pattern from Exercise 01 (NotificationPreference)
+ *     pattern from Exercise 02 (NotificationPreference)
  *   - Action props are the pattern the React ecosystem is moving toward for
  *     design components — Relay mutations fit naturally into this model
  */
@@ -191,7 +191,7 @@ export const TodoListWithActions: FunctionComponent = () => {
     <div>
       <h2>Exercise B — Action Props Pattern</h2>
       {/* TODO: Convert form to use action prop instead of onSubmit */}
-      <form>
+      <form onSubmit={(e) => e.preventDefault()}>
         <input name="text" placeholder="Add a todo..." />
         <button type="submit">
           Add

@@ -126,7 +126,7 @@ export const TodoListStep1UseTransition: FunctionComponent = () => {
 //     `optimisticTodos` automatically reverts to `todos` — NO manual cleanup
 //   - On success: `setTodos` commits the real item; the optimistic one merges
 //
-// This mirrors what our codebase does in Exercise 01's Solution C:
+// This mirrors what our codebase does in Exercise 02's Solution C:
 //   `const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(serverEnabled)`
 //   Instead of `optimisticOverride ?? serverEnabled` with a useEffect.
 // ---------------------------------------------------------------------------
@@ -341,7 +341,7 @@ export const LikeButton: FunctionComponent = () => {
  *    Eliminates the manual `optimisticOverride ?? serverValue` pattern.
  *    While the transition is in flight, the optimistic value is shown.
  *    If the action throws, the value snaps back to the server truth.
- *    In our codebase: replaces the pattern from Exercise 01 Solution C.
+ *    In our codebase: replaces the pattern from Exercise 02 Solution C.
  *
  * 3. Form action prop + useFormStatus
  *    Runs inside a transition automatically. React resets form on success.

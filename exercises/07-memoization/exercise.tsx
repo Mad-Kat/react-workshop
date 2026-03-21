@@ -25,6 +25,8 @@
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Part A: Recipe Feed with four memoization problems
@@ -149,6 +151,8 @@ const ItemCard: FunctionComponent<{
   item: Item;
   style?: React.CSSProperties;
 }> = ({ item, style }) => {
+  const renderCount = useRenderCount();
+
   // Simulate expensive render work
   const end = performance.now() + 8;
   while (performance.now() < end) {
@@ -159,6 +163,7 @@ const ItemCard: FunctionComponent<{
     <div style={style} className="item-card">
       <strong>{item.name}</strong>
       <span>{item.category}</span>
+      <RenderCount count={renderCount} />
     </div>
   );
 };
@@ -184,7 +189,7 @@ export const ItemList: FunctionComponent = () => {
 
   return (
     <div>
-      <p>Timer: {tick}s — open Profiler to see which cards re-render</p>
+      <p>Timer: {tick}s — watch the render counts on each card</p>
 
       {ITEMS.map((item, index) => (
         <ItemCard

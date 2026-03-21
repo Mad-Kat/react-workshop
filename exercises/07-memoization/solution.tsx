@@ -5,6 +5,8 @@
 
 import type { FunctionComponent } from "react";
 import { memo, useEffect, useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Part A: Recipe Feed
@@ -101,6 +103,8 @@ const ItemCard = memo<{
   item: Item;
   style?: React.CSSProperties;
 }>(({ item, style }) => {
+  const renderCount = useRenderCount();
+
   // Simulate expensive render work
   const end = performance.now() + 8;
   while (performance.now() < end) {
@@ -111,6 +115,7 @@ const ItemCard = memo<{
     <div style={style} className="item-card">
       <strong>{item.name}</strong>
       <span>{item.category}</span>
+      <RenderCount count={renderCount} />
     </div>
   );
 });
@@ -140,7 +145,7 @@ export const ItemList: FunctionComponent = () => {
 
   return (
     <div>
-      <p>Timer: {tick}s — open Profiler to confirm no cards re-render</p>
+      <p>Timer: {tick}s — render counts on cards should stay at 1</p>
 
       {ITEMS.map((item, index) => (
         <ItemCard

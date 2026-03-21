@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx agent-browser:*)",
+      "Bash(agent-browser --help)",
+      "Bash(node -e \"const pkg = require\\(''./node_modules/react/package.json''\\); console.log\\(''React:'', pkg.version\\)\")",
+      "Bash(node -e \"const pkg = require\\(''./node_modules/react-dom/package.json''\\); console.log\\(''ReactDOM:'', pkg.version\\)\")",
+      "Bash(npx vite:*)"
+    ]
+  }
+}

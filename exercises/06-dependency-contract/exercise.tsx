@@ -1,5 +1,5 @@
 /**
- * Exercise 05: The Dependency Contract
+ * Exercise 06: The Dependency Contract
  * ======================================
  *
  * Mental model: The linter doesn't suggest dependencies — it discovers them.
@@ -19,6 +19,9 @@ import {
   useMemo,
   useState,
 } from "react";
+// Note: useCallback is imported for your solution — you may need it
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Exercise A: useMemo that never caches
@@ -81,65 +84,7 @@ export const Playlist: FunctionComponent<PlaylistProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Exercise B: useCallback with incomplete deps
-//
-// `handleToggle` has 5 missing dependencies. It works by luck because
-// most of them are stable, but the linter is correct.
-//
-// Fix the dependency array (or restructure to make deps stable).
-// ---------------------------------------------------------------------------
-
-type PanelAction = { type: "open" | "close"; panel: string };
-
-export const AccordionSection: FunctionComponent<{
-  panelId: string;
-  isOpen: boolean;
-  dispatch: (action: PanelAction) => void;
-  onOpenChanged?: (open: boolean) => void;
-  labelText?: string;
-}> = ({ panelId, isOpen, dispatch, onOpenChanged, labelText }) => {
-  const log = (action: string) => {
-    console.log(`[Log] ${action} for ${labelText}`);
-  };
-
-  const scrollToPanel = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // Problem: deps array is incomplete — missing dispatch, log,
-  // scrollToPanel, onOpenChanged, panelId
-  const handleToggle = useCallback(
-    (newOpen: boolean) => () => {
-      onOpenChanged?.(newOpen);
-      dispatch(
-        newOpen
-          ? { type: "open", panel: panelId }
-          : { type: "close", panel: panelId },
-      );
-
-      if (!newOpen) {
-        scrollToPanel(panelId);
-      }
-
-      if (labelText) {
-        log(newOpen ? "open" : "close");
-      }
-    },
-    [labelText, panelId], // Missing: dispatch, onOpenChanged, log, scrollToPanel
-  );
-
-  return (
-    <div>
-      <p>{isOpen ? "Expanded content" : "Collapsed content"}</p>
-      <button onClick={handleToggle(!isOpen)}>
-        {isOpen ? "Show less" : "Show more"}
-      </button>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Exercise C: Effect with object dependency that causes infinite loop
+// Exercise B: Effect with object dependency that causes infinite loop
 //
 // The effect depends on `options`, which is an object created during render.
 // Every render creates a new object reference → effect re-runs → state
@@ -157,6 +102,7 @@ interface FeedEntry {
 export const ActivityFeed: FunctionComponent<{
   channelId: string;
 }> = ({ channelId }) => {
+  const renderCount = useRenderCount();
   const [entries, setEntries] = useState<FeedEntry[]>([]);
 
   // Problem: new object every render
@@ -182,6 +128,7 @@ export const ActivityFeed: FunctionComponent<{
 
   return (
     <div>
+      <RenderCount count={renderCount} />
       {entries.map((entry) => (
         <p key={entry.id}>{entry.text}</p>
       ))}

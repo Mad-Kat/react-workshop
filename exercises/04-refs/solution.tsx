@@ -1,5 +1,5 @@
 /**
- * Exercise 03: Refs — Non-rendering Values — SOLUTIONS
+ * Exercise 04: Refs — Non-rendering Values — SOLUTIONS
  * =====================================================
  */
 

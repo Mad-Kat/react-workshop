@@ -1,5 +1,5 @@
 /**
- * Exercise 03: Refs — Non-rendering Values
+ * Exercise 04: Refs — Non-rendering Values
  * =========================================
  *
  * Mental model: Refs are a "secret pocket" — mutable, not tracked by React.

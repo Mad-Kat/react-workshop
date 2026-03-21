@@ -1,5 +1,11 @@
-import { ProductSearch } from "../../exercises/09-race-conditions/exercise.tsx";
+import { ProductSearch, ProductSearchAbort } from "../../exercises/09-race-conditions/exercise.tsx";
 
 export default function Wrapper() {
-  return <ProductSearch />;
+  return (
+    <>
+      <ProductSearch />
+      <hr style={{ margin: "24px 0" }} />
+      <ProductSearchAbort />
+    </>
+  );
 }

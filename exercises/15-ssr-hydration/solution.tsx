@@ -26,7 +26,7 @@ function useIsHydrated(): boolean {
 // ---------------------------------------------------------------------------
 // Solution A: useSyncExternalStore for window dimensions
 //
-// getServerSnapshot returns null → server and hydration both render null.
+// getServerSnapshot returns null -> server and hydration both render null.
 // Client subscribes to resize events and gets live updates.
 // When width is null, we render a safe fallback that matches the server HTML.
 // ---------------------------------------------------------------------------
@@ -124,116 +124,10 @@ export const ThemeSelector: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Solution C: Static format first, relative time after hydration
-//
-// formatDate(createdAt) is deterministic — new Date(timestamp).toLocaleDateString
-// produces the same string on both server and client for the same input.
-// getRelativeTime(createdAt) calls Date.now() — different on server vs. client.
-// We initialize state with formatDate, then switch to relative time in useEffect
-// (which only runs on the client, after hydration).
-// ---------------------------------------------------------------------------
-
-interface PostProps {
-  authorName: string;
-  content: string;
-  createdAt: number;
-}
-
-const getRelativeTime = (timestamp: number): string => {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
-const formatDate = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleDateString("en-CH", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-export const Post: FunctionComponent<PostProps> = ({ authorName, content, createdAt }) => {
-  // Start with a deterministic format that's the same on server and client
-  const [timeDisplay, setTimeDisplay] = useState(() => formatDate(createdAt));
-
-  // After hydration, switch to relative time and keep it updated every minute
-  useEffect(() => {
-    setTimeDisplay(getRelativeTime(createdAt));
-
-    const interval = setInterval(() => {
-      setTimeDisplay(getRelativeTime(createdAt));
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [createdAt]);
-
-  return (
-    <div style={{ padding: 16, border: "1px solid #ddd", marginBottom: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <strong>{authorName}</strong>
-        <span style={{ color: "#666" }}>{timeDisplay}</span>
-      </div>
-      <p>{content}</p>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Solution D: null → boolean for matchMedia
-//
-// Same pattern as domains/spending/src/spending.tsx:
-//   const [isMobileTablet, setIsMobileTablet] = useState<boolean | null>(null);
-//
-// null is the same on server and client — no mismatch.
-// After hydration, useEffect reads the real matchMedia value and updates.
-// Also subscribes to OS dark-mode changes so the card stays in sync.
-// ---------------------------------------------------------------------------
-
-export const AdaptiveCard: FunctionComponent = () => {
-  // null = "we don't know yet" — deterministic, same on server and during hydration
-  const [prefersDark, setPrefersDark] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    setPrefersDark(mql.matches);
-
-    // Keep in sync when the user toggles OS dark mode
-    const handler = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
-
-  // While prefersDark is null, show a neutral style that matches the server HTML
-  return (
-    <div
-      style={{
-        padding: 16,
-        background: prefersDark === null ? "#f5f5f5" : prefersDark ? "#1e1e1e" : "#ffffff",
-        color: prefersDark === null ? "#333" : prefersDark ? "#ffffff" : "#1e1e1e",
-        border: "1px solid #ddd",
-        borderRadius: 8,
-      }}
-    >
-      <h3>Adaptive Card</h3>
-      <p>This card adapts to your color scheme preference.</p>
-      <p>Current mode: {prefersDark === null ? "Detecting..." : prefersDark ? "Dark" : "Light"}</p>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Combined demo
 // ---------------------------------------------------------------------------
 
 export const SSRExercises: FunctionComponent = () => {
-  const now = Date.now();
   return (
     <div>
       <h1>SSR & Hydration Exercises</h1>
@@ -243,23 +137,14 @@ export const SSRExercises: FunctionComponent = () => {
 
       <h2>B: localStorage crash</h2>
       <ThemeSelector />
-
-      <h2>C: Date.now() mismatch</h2>
-      <Post authorName="Alice" content="Just shipped the new feature!" createdAt={now - 180000} />
-      <Post authorName="Bob" content="LGTM, merging now." createdAt={now - 3600000} />
-
-      <h2>D: matchMedia mismatch</h2>
-      <AdaptiveCard />
     </div>
   );
 };
 
 /**
- * Four patterns:
+ * Two patterns:
  *   A. useSyncExternalStore with getServerSnapshot — cleanest for browser APIs
  *   B. typeof window guard — simple one-time reads (localStorage, URL hash)
- *   C. Static-first, dynamic-after-hydration — for Date.now() or other non-deterministic values
- *   D. null → boolean — null is deterministic on both sides; update in useEffect
  *
  * Why not just useEffect everything?
  *   useEffect never runs on the server. The first client render MUST match the
@@ -268,7 +153,7 @@ export const SSRExercises: FunctionComponent = () => {
  *
  * Real codebase references:
  *   - blocks/client-side-render/src/clientSideRender.tsx: useSyncExternalStore for SSR
- *   - domains/spending/src/spending.tsx: typeof window guard + null→boolean pattern
+ *   - domains/spending/src/spending.tsx: typeof window guard + null->boolean pattern
  *
  * >> INSTRUCTOR: Use the discussion-notes.md file for the RSC/Streaming/ViewTransition
  * >> discussion after the exercise. Key takeaway for students:

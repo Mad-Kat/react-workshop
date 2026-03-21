@@ -1,5 +1,5 @@
 /**
- * Exercise 04: What Effects Are Actually For
+ * Exercise 05: What Effects Are Actually For
  * ============================================
  *
  * FRAMING — React's Reactivity Model
@@ -31,6 +31,8 @@
 
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Exercise: Room Booking Panel
@@ -71,6 +73,8 @@ const subscribeToOccupancyUpdates = (
 export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
   room,
 }) => {
+  const renderCount = useRenderCount();
+
   const [guests, setGuests] = useState(1);
   const [liveScore, setLiveScore] = useState(room.ratePerGuest);
   const [confirmed, setConfirmed] = useState(false);
@@ -122,7 +126,7 @@ export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
 
   return (
     <div>
-      <h1>Exercise 04 — {room.name}</h1>
+      <h1>Exercise 05 — {room.name}</h1>
       <p>Rate per guest: ${liveScore}</p>
       <p>
         Guests:
@@ -135,6 +139,7 @@ export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
       </p>
       <p>Total: ${totalRate}</p>
       <button onClick={handleConfirmBooking}>Confirm Booking</button>
+      <RenderCount count={renderCount} />
     </div>
   );
 };

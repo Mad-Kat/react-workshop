@@ -1,5 +1,5 @@
 /**
- * Exercise 01: State Shape & Derived State
+ * Exercise 02: State Shape & Derived State
  * =========================================
  *
  * Mental model: If you can compute it during render, don't put it in state.
@@ -17,6 +17,8 @@
 
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Exercise A: Weather Status Badge
@@ -38,6 +40,8 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
   isStationOffline = false,
   forecast,
 }) => {
+  const renderCount = useRenderCount();
+
   const [badge, setBadge] = useState(statusIcon);
 
   useEffect(() => setBadge(statusIcon), [statusIcon]);
@@ -46,17 +50,17 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
     if (badge !== "unknown") {
       setBadge("unknown"); // setState during render!
     }
-    return <span>Station offline ({badge})</span>;
+    return <span>Station offline ({badge}) <RenderCount count={renderCount} /></span>;
   }
 
   if (!forecast) {
     if (badge !== "unknown") {
       setBadge("unknown"); // setState during render!
     }
-    return <span>No forecast data ({badge})</span>;
+    return <span>No forecast data ({badge}) <RenderCount count={renderCount} /></span>;
   }
 
-  return <span>Current weather: {badge}</span>;
+  return <span>Current weather: {badge} <RenderCount count={renderCount} /></span>;
 };
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,10 @@
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
 
+// ---------------------------------------------------------------------------
+// Shared types and API (same as exercise)
+// ---------------------------------------------------------------------------
+
 interface SearchResult {
   id: string;
   name: string;
@@ -34,11 +38,13 @@ const searchProducts = async (
 };
 
 // ---------------------------------------------------------------------------
-// Solution 1: Ignore flag (simple)
+// Solution A: useProductSearch with ignore flag
 // ---------------------------------------------------------------------------
 
-export const ProductSearchWithIgnoreFlag: FunctionComponent = () => {
-  const [query, setQuery] = useState("");
+function useProductSearch(query: string): {
+  results: SearchResult[];
+  isLoading: boolean;
+} {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -65,32 +71,17 @@ export const ProductSearchWithIgnoreFlag: FunctionComponent = () => {
     };
   }, [query]);
 
-  return (
-    <div>
-      <input
-        type="text"
-        value={query}
-        placeholder="Search products..."
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      {isLoading && <p>Searching...</p>}
-      <ul>
-        {results.map((result) => (
-          <li key={result.id}>
-            {result.name} — CHF {result.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+  return { results, isLoading };
+}
 
 // ---------------------------------------------------------------------------
-// Solution 2: AbortController (proper cancellation)
+// Solution B: useProductSearchWithAbort using AbortController
 // ---------------------------------------------------------------------------
 
-export const ProductSearchWithAbort: FunctionComponent = () => {
-  const [query, setQuery] = useState("");
+function useProductSearchWithAbort(query: string): {
+  results: SearchResult[];
+  isLoading: boolean;
+} {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -122,8 +113,45 @@ export const ProductSearchWithAbort: FunctionComponent = () => {
     };
   }, [query]);
 
+  return { results, isLoading };
+}
+
+// ---------------------------------------------------------------------------
+// Consumer components (same as exercise)
+// ---------------------------------------------------------------------------
+
+export const ProductSearch: FunctionComponent = () => {
+  const [query, setQuery] = useState("");
+  const { results, isLoading } = useProductSearch(query);
+
   return (
     <div>
+      <h2>Solution A: Ignore Flag</h2>
+      <input
+        type="text"
+        value={query}
+        placeholder="Search products..."
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {isLoading && <p>Searching...</p>}
+      <ul>
+        {results.map((result) => (
+          <li key={result.id}>
+            {result.name} — CHF {result.price.toFixed(2)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export const ProductSearchAbort: FunctionComponent = () => {
+  const [query, setQuery] = useState("");
+  const { results, isLoading } = useProductSearchWithAbort(query);
+
+  return (
+    <div>
+      <h2>Solution B: AbortController</h2>
       <input
         type="text"
         value={query}

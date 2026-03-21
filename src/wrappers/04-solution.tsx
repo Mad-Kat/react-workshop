@@ -1,7 +1,12 @@
-import { RoomBookingPanel } from "../../exercises/04-effects/solution.tsx";
-
-const room = { id: "1", name: "Ocean Suite", ratePerGuest: 120, maxGuests: 4, category: "premium" };
+import { WeatherStationDisplay, DebouncedSearch } from "../../exercises/04-refs/solution.tsx";
 
 export default function Wrapper() {
-  return <RoomBookingPanel room={room} />;
+  return (
+    <>
+      <h2>A: Weather Station Poller</h2>
+      <WeatherStationDisplay stationId="station-1" />
+      <h2>B: Debounced Search</h2>
+      <DebouncedSearch />
+    </>
+  );
 }

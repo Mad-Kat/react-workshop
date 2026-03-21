@@ -1,10 +1,12 @@
 /**
- * Exercise 01: State Shape & Derived State — SOLUTIONS
+ * Exercise 02: State Shape & Derived State — SOLUTIONS
  * =====================================================
  */
 
 import type { FunctionComponent } from "react";
 import { useOptimistic, useTransition } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Solution A: Weather Status Badge
@@ -27,6 +29,8 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
   isStationOffline = false,
   forecast,
 }) => {
+  const renderCount = useRenderCount();
+
   // Derive the badge based on props — no state needed
   const badge: WeatherStatusIcon = isStationOffline
     ? "unknown"
@@ -35,14 +39,14 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
       : statusIcon;
 
   if (isStationOffline) {
-    return <span>Station offline ({badge})</span>;
+    return <span>Station offline ({badge}) <RenderCount count={renderCount} /></span>;
   }
 
   if (!forecast) {
-    return <span>No forecast data ({badge})</span>;
+    return <span>No forecast data ({badge}) <RenderCount count={renderCount} /></span>;
   }
 
-  return <span>Current weather: {badge}</span>;
+  return <span>Current weather: {badge} <RenderCount count={renderCount} /></span>;
 };
 
 // ---------------------------------------------------------------------------

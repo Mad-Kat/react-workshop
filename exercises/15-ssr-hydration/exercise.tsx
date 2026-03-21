@@ -10,7 +10,7 @@
  *
  * These are patterns found in our codebase.
  *
- * Fix four components that crash on the server or produce hydration mismatches.
+ * Fix two components that crash on the server or produce hydration mismatches.
  */
 
 import type { FunctionComponent } from "react";
@@ -103,108 +103,10 @@ export const ThemeSelector: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise C: Post — Date.now() hydration mismatch
-//
-// This component doesn't crash, but produces a React hydration warning.
-// getRelativeTime(createdAt) calls Date.now() during render. The server
-// computes the value at time T. The client rehydrates at T+2s and computes
-// a different value. The HTML strings don't match.
-//
-// TODO: Render a static, deterministic date string on first render (same on
-//       server and client), then update to the relative "Xm ago" format via
-//       useEffect after hydration.
-// ---------------------------------------------------------------------------
-
-interface PostProps {
-  authorName: string;
-  content: string;
-  createdAt: number; // Unix timestamp in milliseconds
-}
-
-const getRelativeTime = (timestamp: number): string => {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-};
-
-const formatDate = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleDateString("en-CH", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-export const Post: FunctionComponent<PostProps> = ({ authorName, content, createdAt }) => {
-  // Bug: Date.now() produces different values on server vs client → hydration mismatch
-  const timeAgo = getRelativeTime(createdAt);
-
-  return (
-    <div style={{ padding: 16, border: "1px solid #ddd", marginBottom: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <strong>{authorName}</strong>
-        <span style={{ color: "#666" }}>{timeAgo}</span>
-      </div>
-      <p>{content}</p>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Exercise D: AdaptiveCard — matchMedia hydration mismatch
-//
-// matchMedia doesn't exist on the server. Even with a typeof guard, the
-// existing code still produces a hydration mismatch:
-//   - Server renders with prefersDark = false (no window)
-//   - Client's FIRST render (hydration) MUST also be false to match
-//   - But a user in dark mode sees false briefly before useEffect fires
-//
-// TODO: Fix using the null → boolean pattern:
-//       useState<boolean | null>(null) — null on both server and hydration
-//       (deterministic, no mismatch). Update to the real value in useEffect.
-//       Show a neutral "Detecting..." style while null.
-// ---------------------------------------------------------------------------
-
-export const AdaptiveCard: FunctionComponent = () => {
-  // Bug: even though typeof window protects the crash, this is still a mismatch.
-  // Server sets prefersDark = false. Client's first render also sees false via
-  // the guard. BUT computing it in render means a dark-mode user gets a flash
-  // of light styles. More importantly: any difference between the initial
-  // state and what the server rendered is a React hydration error.
-  const prefersDark =
-    typeof window !== "undefined"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-      : false;
-
-  return (
-    <div
-      style={{
-        padding: 16,
-        background: prefersDark ? "#1e1e1e" : "#ffffff",
-        color: prefersDark ? "#ffffff" : "#1e1e1e",
-        border: "1px solid #ddd",
-        borderRadius: 8,
-      }}
-    >
-      <h3>Adaptive Card</h3>
-      <p>This card adapts to your color scheme preference.</p>
-      <p>Current mode: {prefersDark ? "Dark" : "Light"}</p>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
 // Combined demo
 // ---------------------------------------------------------------------------
 
 export const SSRExercises: FunctionComponent = () => {
-  const now = Date.now();
   return (
     <div>
       <h1>SSR & Hydration Exercises</h1>
@@ -214,13 +116,6 @@ export const SSRExercises: FunctionComponent = () => {
 
       <h2>B: localStorage crash</h2>
       <ThemeSelector />
-
-      <h2>C: Date.now() mismatch</h2>
-      <Post authorName="Alice" content="Just shipped the new feature!" createdAt={now - 180000} />
-      <Post authorName="Bob" content="LGTM, merging now." createdAt={now - 3600000} />
-
-      <h2>D: matchMedia mismatch</h2>
-      <AdaptiveCard />
     </div>
   );
 };
@@ -230,6 +125,4 @@ export const SSRExercises: FunctionComponent = () => {
  *
  * A: useSyncExternalStore has a third argument — getServerSnapshot. Return null from it.
  * B: useState accepts a function — check typeof window inside it.
- * C: formatDate(createdAt) is deterministic. getRelativeTime(createdAt) is not. Start with one, switch to the other.
- * D: What value is the same on server and client? null. Start there, update in useEffect.
  */

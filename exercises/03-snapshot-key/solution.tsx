@@ -1,29 +1,22 @@
 /**
- * Exercise 02: State as a Snapshot & the Key Trick
- * =================================================
- *
- * Mental model: Setting state doesn't change the variable — it requests a
- * re-render with a new value. The current render always sees a snapshot.
- *
- * These components use `useEffect(() => setState(...), [prop])` to reset
- * state when props change. Fix them using the `key` trick or by removing
- * the redundant state.
- *
- * Key reading: https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes
- *
+ * Exercise 03: State as a Snapshot & the Key Trick — SOLUTIONS
+ * =============================================================
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Exercise A: FontSizePicker
+// Solution A: FontSizePicker
 //
-// When the `fontSize` prop changes (e.g. parent selects a different preset),
-// the effect resets `inputValue`. But there's a flash — the old value
-// renders first, then the effect fires on the next render.
+// Option 1 (preferred): Remove the local state and effect entirely.
+// The parent owns the font size — use the prop directly for display.
+// For intermediate typing state (before the value is valid), use an
+// uncontrolled input with a ref so we avoid calling onFontSizeChanged
+// on every keystroke.
 //
-// Fix this so the component resets cleanly when `fontSize` changes.
+// Option 2: Use `key={selectedFontSize}` from the parent (ThemeEditor)
+// to remount the picker when the preset changes, giving it fresh state.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -33,31 +26,23 @@ interface FontSizePickerProps {
   placeholder: string;
 }
 
+// Option 1: Remove local state and effect, use prop directly
 export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   fontSize,
   onFontSizeChanged,
   placeholder,
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const [inputValue, setInputValue] = useState<string>(
-    fontSize !== null ? String(fontSize) : "",
-  );
-
-  // Anti-pattern: effect-based reset
-  useEffect(() => {
-    setInputValue(fontSize !== null ? String(fontSize) : "");
-  }, [fontSize]);
+  // For intermediate typing state, use an uncontrolled input with a ref
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <input
+      ref={inputRef}
       type="number"
-      value={isFocused ? inputValue : (fontSize !== null ? String(fontSize) : "")}
+      defaultValue={fontSize !== null ? String(fontSize) : ""}
       placeholder={placeholder}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
       onChange={(e) => {
         const raw = e.currentTarget.value;
-        setInputValue(raw);
         const parsed = parseFloat(raw);
         if (!isNaN(parsed) && parsed > 0) {
           onFontSizeChanged(parsed);
@@ -69,7 +54,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   );
 };
 
-// Parent that uses FontSizePicker — this is where you might apply the key trick
+// Option 2: Parent uses key to force remount on preset change
 export const ThemeEditor: FunctionComponent = () => {
   const [selectedFontSize, setSelectedFontSize] = useState<number | null>(14);
 
@@ -91,7 +76,9 @@ export const ThemeEditor: FunctionComponent = () => {
         </button>
       ))}
 
+      {/* key={selectedFontSize} forces remount — fresh state on every preset change */}
       <FontSizePicker
+        key={selectedFontSize}
         fontSize={selectedFontSize}
         onFontSizeChanged={setSelectedFontSize}
         placeholder="Enter px value"
@@ -101,14 +88,15 @@ export const ThemeEditor: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise B: Notification Preferences Dialog
+// Solution B: Notification Settings Dialog
 //
-// `state` is an editable copy of `preferences` (from context). The effect
-// resets `state` when `preferences` changes externally. But if the dialog is
-// open and the user is editing, the reset silently wipes their changes.
+// The effect IS legitimate here — this is the "editable copy" pattern.
+// But the effect-based reset is fragile: if preferences changes externally
+// while the dialog is open, the user's in-progress edits are silently wiped.
 //
-// Is this effect redundant? Or is it legitimate?
-// What's a better pattern?
+// Better: use `key` from the parent to remount the dialog when preferences
+// changes. The dialog only opens on user action, so remounting is safe and
+// gives it a fresh copy of preferences each time it opens.
 // ---------------------------------------------------------------------------
 
 interface NotificationPreferences {
@@ -123,15 +111,12 @@ interface NotificationSettingsProps {
   onClose: () => void;
 }
 
+// The dialog itself is now simple — no effect needed.
+// The parent uses `key={JSON.stringify(preferences)}` to remount on change.
 export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsProps> =
   ({ preferences, updatePreferences, onClose }) => {
+    // Fresh copy on mount — no effect sync needed
     const [state, setState] = useState<NotificationPreferences>(preferences);
-
-    // Anti-pattern: effect-based reset. If the user is editing toggles
-    // and preferences changes externally, their changes are silently wiped.
-    useEffect(() => {
-      setState(preferences);
-    }, [preferences]);
 
     const preferencesHaveChanged =
       JSON.stringify(preferences) !== JSON.stringify(state);
@@ -168,28 +153,20 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
     );
   };
 
+// Parent renders with key:
+// <NotificationSettingsDialog key={JSON.stringify(preferences)} preferences={preferences} ... />
+
 // ---------------------------------------------------------------------------
-// Exercise C: Stale Closure Demo
+// Real codebase references:
+//   - domains/archived-orders/src/overview/datePicker.tsx: effect-based reset on prop change
+//   - domains/cookie-compliance/src/settings/dialog/useCookieSettingsHelper.tsx: editable copy with effect sync
 //
-// This counter has a bug: clicking "Increment and log" shows a stale value
-// in the alert. Explain why and fix it.
+// Key takeaways:
+//   1. Setting state doesn't mutate the variable — the current render always
+//      sees a snapshot. The new value is only visible in the next render.
+//   2. `useEffect(() => setState(prop), [prop])` causes a double-render (flash)
+//      and is almost always replaceable by `key` or derived state.
+//   3. `key` on a component tells React to throw away the old instance and
+//      mount a fresh one. Use it to reset all state at once when a controlling
+//      value changes.
 // ---------------------------------------------------------------------------
-
-export const StaleClosureDemo: FunctionComponent = () => {
-  const [count, setCount] = useState(0);
-
-  const incrementAndLog = () => {
-    setCount(count + 1);
-    // Bug: this alert fires 2 seconds later but shows the OLD count
-    setTimeout(() => {
-      alert(`Count is: ${count}`);
-    }, 2000);
-  };
-
-  return (
-    <div>
-      <p>Count: {count}</p>
-      <button onClick={incrementAndLog}>Increment and log (after 2s)</button>
-    </div>
-  );
-};
