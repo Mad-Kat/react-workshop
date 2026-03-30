@@ -1,5 +1,5 @@
-import { ProductDetailPage } from "../../exercises/12-error-boundaries/solution.tsx";
+import { SSRExercises } from "../../exercises/12-ssr-hydration/solution.tsx";
 
 export default function Wrapper() {
-  return <ProductDetailPage />;
+  return <SSRExercises />;
 }

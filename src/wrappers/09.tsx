@@ -1,11 +1,14 @@
-import { ProductSearch, ProductSearchAbort } from "../../exercises/09-race-conditions/exercise.tsx";
+import { TodoListManual, TodoListWithActions, LikeButton } from "../../exercises/09-actions/exercise.tsx";
 
 export default function Wrapper() {
   return (
     <>
-      <ProductSearch />
-      <hr style={{ margin: "24px 0" }} />
-      <ProductSearchAbort />
+      <h2>A: Manual State (before)</h2>
+      <TodoListManual />
+      <h2>B: Action Props (your exercise)</h2>
+      <TodoListWithActions />
+      <h2>C: useActionState</h2>
+      <LikeButton />
     </>
   );
 }

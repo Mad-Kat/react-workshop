@@ -6,7 +6,14 @@
       "Bash(agent-browser --help)",
       "Bash(node -e \"const pkg = require\\(''./node_modules/react/package.json''\\); console.log\\(''React:'', pkg.version\\)\")",
       "Bash(node -e \"const pkg = require\\(''./node_modules/react-dom/package.json''\\); console.log\\(''ReactDOM:'', pkg.version\\)\")",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(rm -rf exercises/06-dependency-contract exercises/13-custom-hooks exercises/14-compound-components)",
+      "Bash(rm -f src/wrappers/06.tsx src/wrappers/06-solution.tsx src/wrappers/13.tsx src/wrappers/13-solution.tsx src/wrappers/14.tsx src/wrappers/14-solution.tsx)",
+      "Bash(mv exercises/07-memoization exercises/06-memoization)",
+      "Bash(mv exercises/08-dom-refs exercises/07-dom-refs)",
+      "Bash(mv exercises/09-race-conditions exercises/08-race-conditions)",
+      "Bash(mv exercises/10-actions exercises/09-actions)",
+      "Bash(mv exercises/11-suspense exercises/10-suspense)"
     ]
   }
 }

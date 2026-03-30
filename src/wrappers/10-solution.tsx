@@ -1,19 +1,5 @@
-import { TodoListStep1UseTransition, TodoListStep2UseOptimistic, TodoListStep3FormAction, LikeButton } from "../../exercises/10-actions/solution.tsx";
+import { ProductPageWithSuspense } from "../../exercises/10-suspense/solution.tsx";
 
 export default function Wrapper() {
-  return (
-    <>
-      <h2>Step 1: useTransition</h2>
-      <TodoListStep1UseTransition />
-      <hr style={{ margin: "24px 0" }} />
-      <h2>Step 2: useOptimistic</h2>
-      <TodoListStep2UseOptimistic />
-      <hr style={{ margin: "24px 0" }} />
-      <h2>Step 3: Form Action</h2>
-      <TodoListStep3FormAction />
-      <hr style={{ margin: "24px 0" }} />
-      <h2>Step 4: useActionState (LikeButton)</h2>
-      <LikeButton />
-    </>
-  );
+  return <ProductPageWithSuspense />;
 }

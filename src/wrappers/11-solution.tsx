@@ -1,5 +1,5 @@
-import { ProductPageWithSuspense } from "../../exercises/11-suspense/solution.tsx";
+import { ProductDetailPage } from "../../exercises/11-error-boundaries/solution.tsx";
 
 export default function Wrapper() {
-  return <ProductPageWithSuspense />;
+  return <ProductDetailPage />;
 }

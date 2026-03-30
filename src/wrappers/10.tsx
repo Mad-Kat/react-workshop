@@ -1,14 +1,13 @@
-import { TodoListManual, TodoListWithActions, LikeButton } from "../../exercises/10-actions/exercise.tsx";
+import { ProductPageManual, ProductPageWithSuspense } from "../../exercises/10-suspense/exercise.tsx";
 
 export default function Wrapper() {
   return (
     <>
-      <h2>A: Manual State (before)</h2>
-      <TodoListManual />
-      <h2>B: Action Props (your exercise)</h2>
-      <TodoListWithActions />
-      <h2>C: useActionState</h2>
-      <LikeButton />
+      <h2>Part 1: Manual Loading States</h2>
+      <ProductPageManual />
+      <hr style={{ margin: "24px 0" }} />
+      <h2>Part 2: Suspense + use()</h2>
+      <ProductPageWithSuspense />
     </>
   );
 }

@@ -72,22 +72,7 @@ Also referenced:
 
 ---
 
-## Exercise 06: The Dependency Contract
-
-| Exercise | Anti-Pattern | Original File |
-|----------|-------------|---------------|
-| A — Playlist context | useMemo with unstable function dep (selectTrack) | `segments/carousel-solo-slide/src/carousel.tsx` (lines 51–78) |
-| B — Activity Feed | Effect with object dep causing infinite loop | Generic pattern (no specific file) |
-
-**Note:** Exercise B includes `useRenderCount()` — participants will see the counter spin rapidly (infinite loop), then stabilize after fixing the deps. Old Exercise B (AccordionSection with missing deps) was removed to keep to 2 sub-exercises.
-
-Also referenced:
-- `segments/snowplow/src/context/trackingContext.tsx` (lines 27–35) — intentional dep suppression with mutation
-- `segments/restore-render-height/src/restoreRenderHeightContext.tsx` (lines 37–56) — empty deps with router ref
-
----
-
-## Exercise 07: Memoization Pitfalls
+## Exercise 06: Memoization Pitfalls
 
 | Exercise | Anti-Pattern | Original File |
 |----------|-------------|---------------|
@@ -101,7 +86,7 @@ Also referenced:
 
 ---
 
-## Exercise 08: DOM Refs & the Safe Mutation Window
+## Exercise 07: DOM Refs & the Safe Mutation Window
 
 | Exercise | Pattern | Original File |
 |----------|---------|---------------|
@@ -112,7 +97,7 @@ Also referenced:
 
 ---
 
-## Exercise 09: Race Conditions & Cleanup
+## Exercise 08: Race Conditions & Cleanup
 
 | Exercise | Pattern | Original File |
 |----------|---------|---------------|
@@ -125,7 +110,7 @@ Also referenced: `libraries/cart/src/sidebar/lazy/shoppingCartSidebarContent.tsx
 
 ---
 
-## Exercise 10: Actions & the Action Prop
+## Exercise 09: Actions & the Action Prop
 
 | Exercise | Pattern | Codebase Connection |
 |----------|---------|---------------------|
@@ -142,7 +127,7 @@ External references:
 
 ---
 
-## Exercise 11: Suspense with use()
+## Exercise 10: Suspense with use()
 
 | Exercise | Pattern | Original File |
 |----------|---------|---------------|
@@ -152,7 +137,7 @@ External references:
 
 ---
 
-## Exercise 12: Error Boundaries
+## Exercise 11: Error Boundaries
 
 | Exercise | Pattern | Original File |
 |----------|---------|---------------|
@@ -163,30 +148,7 @@ External references:
 
 ---
 
-## Exercise 13: Custom Hooks as Sync Units
-
-| Exercise | Pattern | Original File |
-|----------|---------|---------------|
-| useWebSocket hook | Full sync unit with connect/disconnect/reconnect | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` |
-| | Stable callback via ref | `segments/scroll/src/useScrollDirection.ts` |
-
-**Format:** Build from scratch. Participants are given the FakeWebSocket API, the `UseWebSocketResult` interface, and the consumer component. They implement the hook.
-
----
-
-## Exercise 14: Compound Components
-
-| Exercise | Pattern | Original File |
-|----------|---------|---------------|
-| Disclosure (compound component) | Minimal context + state | `libraries/user-menu/src/components/standardUserMenu/userAccount/menuSections/hooks/accordion.tsx` |
-| | "Must be inside parent" guard | `segments/carousel/src/carouselContext.tsx` |
-| | Dual context (state + dispatch) | `domains/product-detail/src/blocks/blockStates/blockStatesContext.tsx` |
-
-**Format:** Build from scratch. Contexts and guard hooks are provided as starter code. Participants implement the 4 compound components.
-
----
-
-## Exercise 15: SSR & Hydration
+## Exercise 12: SSR & Hydration
 
 | Exercise | Pattern | Original File |
 |----------|---------|---------------|

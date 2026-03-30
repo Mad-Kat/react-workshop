@@ -1,18 +1,15 @@
-import { RecipeFeed, ItemList } from "../../exercises/07-memoization/exercise.tsx";
-
-const recipes = [
-  { id: "1", title: "Pasta Carbonara", durationMinutes: 30, cuisine: "Italian", isFeatured: true },
-  { id: "2", title: "Sushi Roll", durationMinutes: 90, cuisine: "Japanese", isFeatured: false },
-  { id: "3", title: "Fish Tacos", durationMinutes: 20, cuisine: "Mexican", isFeatured: false },
-];
+import { useState } from "react";
+import { FancyInputDemo, ScrollSafeInput } from "../../exercises/07-dom-refs/exercise.tsx";
 
 export default function Wrapper() {
+  const [val, setVal] = useState(42);
   return (
     <>
-      <h2>Part A: Recipe Feed (Problems 1–4)</h2>
-      <RecipeFeed recipes={recipes} displayMode="card" isExpanded={true} />
-      <h2>Part B: Item List (Problem 5)</h2>
-      <ItemList />
+      <h2>A: Fancy Input</h2>
+      <FancyInputDemo />
+      <h2>B: Scroll-Safe Input</h2>
+      <p>Try scrolling on the number input while it's focused:</p>
+      <ScrollSafeInput value={val} onChange={setVal} />
     </>
   );
 }
