@@ -5,9 +5,15 @@
  * Mental model: Safe to read/mutate DOM in event handlers and effects
  * (after commit), never during render.
  *
+ * This exercise also covers useLayoutEffect — the synchronous sibling of
+ * useEffect that fires after DOM mutations but BEFORE the browser paints.
+ * Use it when you need to measure or mutate the DOM without a visual flash.
+ *
  * These are patterns found in our codebase.
  *
- * Key reading: https://react.dev/learn/manipulating-the-dom-with-refs
+ * Key reading:
+ *   - https://react.dev/learn/manipulating-the-dom-with-refs
+ *   - https://react.dev/reference/react/useLayoutEffect
  */
 
 import type { FunctionComponent, Ref } from "react";
@@ -49,12 +55,18 @@ export const FancyInput: FunctionComponent<{
 export const FancyInputDemo: FunctionComponent = () => {
   // TODO: Create a ref with the FancyInputHandle type
   // TODO: Call ref.current.focus() and ref.current.clear() from buttons
+  //
+  // Also: after the input mounts, measure its width and display it.
+  // Using useEffect for DOM measurement causes a flash (render → paint →
+  // measure → update → repaint). Which hook avoids this?
+  // Hint: https://react.dev/reference/react/useLayoutEffect
 
   return (
     <div>
       <FancyInput placeholder="Type here..." />
       <button onClick={() => console.log("TODO: focus")}>Focus</button>
       <button onClick={() => console.log("TODO: clear")}>Clear</button>
+      <p>Input width: ???px</p>
     </div>
   );
 };

@@ -4,7 +4,7 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 
 // ---------------------------------------------------------------------------
 // PROVIDED: useIsHydrated helper (same as exercise)
@@ -82,17 +82,18 @@ export const ResponsiveLayout: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: typeof window guard in useState initializer
+// Solution B: typeof window guard + useId
 //
-// The initializer function runs once on first render. On the server,
-// typeof window === "undefined" so we return the safe default "light".
-// On the client (first render / hydration), the guard also returns "light"
-// unless we've already stored a value in localStorage — which is fine because
-// the client's initializer runs AFTER hydration, so the state starts at
-// whatever the server sent, then React picks up the client's initializer value.
+// Fix 1 (localStorage crash): The initializer function runs once on first
+// render. On the server, typeof window === "undefined" so we return "light".
 //
 // Note: pass getInitialTheme as a function reference, not getInitialTheme(),
 // so React only calls it once on mount instead of on every render.
+//
+// Fix 2 (hydration mismatch): useId() generates a stable identifier that is
+// the same on server and client. Math.random() produces different values in
+// each environment → the id attribute in the SSR HTML won't match the client,
+// causing a hydration mismatch.
 // ---------------------------------------------------------------------------
 
 const getInitialTheme = (): "light" | "dark" => {
@@ -103,8 +104,10 @@ const getInitialTheme = (): "light" | "dark" => {
 export const ThemeSelector: FunctionComponent = () => {
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
+  // Fix 2: useId — stable across server and client, no hydration mismatch
+  const selectId = useId();
+
+  const changeTheme = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
   };
@@ -117,8 +120,16 @@ export const ThemeSelector: FunctionComponent = () => {
         padding: 16,
       }}
     >
-      <h2>Theme: {theme}</h2>
-      <button onClick={toggleTheme}>Toggle theme</button>
+      <h2>Theme</h2>
+      <label htmlFor={selectId}>Choose theme: </label>
+      <select
+        id={selectId}
+        value={theme}
+        onChange={(e) => changeTheme(e.target.value as "light" | "dark")}
+      >
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
     </div>
   );
 };
@@ -144,7 +155,8 @@ export const SSRExercises: FunctionComponent = () => {
 /**
  * Two patterns:
  *   A. useSyncExternalStore with getServerSnapshot — cleanest for browser APIs
- *   B. typeof window guard — simple one-time reads (localStorage, URL hash)
+ *   B1. typeof window guard — simple one-time reads (localStorage, URL hash)
+ *   B2. useId — SSR-safe unique identifiers (labels, aria attributes, htmlFor)
  *
  * Why not just useEffect everything?
  *   useEffect never runs on the server. The first client render MUST match the

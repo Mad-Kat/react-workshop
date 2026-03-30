@@ -10,7 +10,7 @@
  *
  * These are patterns found in our codebase.
  *
- * Fix two components that crash on the server or produce hydration mismatches.
+ * Fix three problems: two server crashes and one hydration mismatch.
  */
 
 import type { FunctionComponent } from "react";
@@ -67,23 +67,31 @@ export const ResponsiveLayout: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise B: ThemeSelector — localStorage crash
+// Exercise B: ThemeSelector — localStorage crash + hydration mismatch
 //
-// This crashes on the server because localStorage is not defined.
+// Bug 1: This crashes on the server because localStorage is not defined.
 // The useState initializer runs during render on the server.
 //
-// TODO: Fix using a typeof window guard in the initializer function.
+// Bug 2: Math.random() generates a different id on server vs client,
+// producing a hydration mismatch on the id/htmlFor attributes.
+//
+// TODO: Fix Bug 1 using a typeof window guard in the initializer function.
 //       The server (and first client render) should default to "light".
+// TODO: Fix Bug 2 using useId() for a stable, SSR-safe identifier.
+//       Key reading: https://react.dev/reference/react/useId
 // ---------------------------------------------------------------------------
 
 export const ThemeSelector: FunctionComponent = () => {
-  // Bug: localStorage is not defined on the server — this crashes SSR
+  // Bug 1: localStorage is not defined on the server — this crashes SSR
   const [theme, setTheme] = useState<"light" | "dark">(
     localStorage.getItem("theme") === "dark" ? "dark" : "light",
   );
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
+  // Bug 2: Math.random() produces a different value on server vs client
+  // → the id attribute in SSR HTML won't match during hydration
+  const selectId = `theme-${Math.random().toString(36).slice(2)}`;
+
+  const changeTheme = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
   };
@@ -96,8 +104,16 @@ export const ThemeSelector: FunctionComponent = () => {
         padding: 16,
       }}
     >
-      <h2>Theme: {theme}</h2>
-      <button onClick={toggleTheme}>Toggle theme</button>
+      <h2>Theme</h2>
+      <label htmlFor={selectId}>Choose theme: </label>
+      <select
+        id={selectId}
+        value={theme}
+        onChange={(e) => changeTheme(e.target.value as "light" | "dark")}
+      >
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
     </div>
   );
 };
@@ -124,5 +140,6 @@ export const SSRExercises: FunctionComponent = () => {
  * Hints (try without these first):
  *
  * A: useSyncExternalStore has a third argument — getServerSnapshot. Return null from it.
- * B: useState accepts a function — check typeof window inside it.
+ * B (Bug 1): useState accepts a function — check typeof window inside it.
+ * B (Bug 2): useId() generates stable identifiers that match between server and client.
  */

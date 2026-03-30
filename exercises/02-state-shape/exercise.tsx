@@ -4,13 +4,19 @@
  *
  * Mental model: If you can compute it during render, don't put it in state.
  *
- * Both components below have redundant state synced via useEffect.
+ * The components below have redundant state synced via useEffect.
  * For each one:
  *   1. Identify whether the state is redundant
  *   2. Decide: derive inline, remove entirely, or justify keeping it
  *   3. Refactor — remove the effect and derive during render where possible
  *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state
+ *
+ * For the TemperatureReading in Exercise A, also revisit the useReducer section
+ * from "A Complete Guide to useEffect" (cited in Exercise 01):
+ * https://overreacted.io/a-complete-guide-to-useeffect/
+ * — "When setting a state variable depends on the current value of another
+ * state variable, you might want to try replacing them both with useReducer."
  *
  * For Exercise B, also read: https://react.dev/reference/react/useOptimistic
  */
@@ -61,6 +67,56 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
   }
 
   return <span>Current weather: {badge} <RenderCount count={renderCount} /></span>;
+};
+
+// ---------------------------------------------------------------------------
+// Exercise A (continued): Temperature Reading
+//
+// The temperature and unit are coupled — toggling the unit requires converting
+// the temperature value. The current code uses an effect with a "previous unit"
+// tracking variable to detect changes.
+//
+// From "A Complete Guide to useEffect" (cited in Exercise 01):
+// "When setting a state variable depends on the current value of another
+// state variable, you might want to try replacing them both with useReducer."
+//
+// 1. Identify the redundant state (prevUnit)
+// 2. Refactor: replace the coupled useState + effect with a single useReducer
+// ---------------------------------------------------------------------------
+
+export const TemperatureReading: FunctionComponent<{
+  initialCelsius: number;
+}> = ({ initialCelsius }) => {
+  const renderCount = useRenderCount();
+
+  const [temperature, setTemperature] = useState(initialCelsius);
+  const [unit, setUnit] = useState<"C" | "F">("C");
+  const [prevUnit, setPrevUnit] = useState<"C" | "F">("C");
+
+  // Anti-pattern: effect detects unit change via redundant prevUnit state
+  // and converts temperature. setTemperature depends on the current unit.
+  useEffect(() => {
+    if (unit !== prevUnit) {
+      if (unit === "F") {
+        setTemperature((t) => t * (9 / 5) + 32);
+      } else {
+        setTemperature((t) => (t - 32) * (5 / 9));
+      }
+      setPrevUnit(unit);
+    }
+  }, [unit, prevUnit]);
+
+  return (
+    <div>
+      <span>
+        {temperature.toFixed(1)}°{unit}
+      </span>
+      <button onClick={() => setUnit(unit === "C" ? "F" : "C")}>
+        Switch to °{unit === "C" ? "F" : "C"}
+      </button>
+      <RenderCount count={renderCount} />
+    </div>
+  );
 };
 
 // ---------------------------------------------------------------------------

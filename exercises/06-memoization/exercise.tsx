@@ -12,8 +12,10 @@
  * >> than just learning the correct memo syntax. The compiler fixes perf, but
  * >> these bugs still indicate confused thinking about React's render model.
  *
- * This file has five instances of memoization — each with a different
- * problem. Classify each: remove, fix, or move out.
+ * This file has six performance-related problems. Problems 1–5 are
+ * memoization pitfalls — classify each: remove, fix, or move out.
+ * Problem 6 is about useDeferredValue — a declarative alternative to
+ * debouncing expensive re-renders.
  *
  * Tip: Open React DevTools Profiler while working on Problem 5 to see
  * which components re-render and how long they take.
@@ -128,7 +130,7 @@ export const RecipeFeed: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Part B: ItemCard list with React.memo — Problem 5
+// Part B: ItemCard list — Problems 5 & 6
 //
 // Problem 5: React.memo trap — an inline object prop breaks memoization
 //
@@ -137,6 +139,14 @@ export const RecipeFeed: FunctionComponent<{
 // but one card still re-renders every time. Why?
 //
 // Hint: look at the `style` prop passed to each ItemCard.
+//
+// Problem 6: No deferred rendering — search input blocked by expensive list
+//
+// A search filter re-renders all ItemCards synchronously on every keystroke,
+// causing input lag. Fix: useDeferredValue on the search term so the input
+// stays responsive while the expensive list renders at lower priority.
+//
+// Key reading: https://react.dev/reference/react/useDeferredValue
 // ---------------------------------------------------------------------------
 
 interface Item {
@@ -180,6 +190,7 @@ const ITEMS: Item[] = [
 
 export const ItemList: FunctionComponent = () => {
   const [tick, setTick] = useState(0);
+  const [search, setSearch] = useState("");
 
   // Re-renders the parent every second — this should NOT cause ItemCard to re-render
   useEffect(() => {
@@ -187,11 +198,24 @@ export const ItemList: FunctionComponent = () => {
     return () => clearInterval(id);
   }, []);
 
+  // Problem 6: filtering with raw search state — every keystroke triggers
+  // a synchronous re-render of all expensive ItemCards, blocking the input.
+  // Fix: use useDeferredValue(search) and filter on the deferred value instead.
+  const filteredItems = ITEMS.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <div>
       <p>Timer: {tick}s — watch the render counts on each card</p>
 
-      {ITEMS.map((item, index) => (
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search items..."
+      />
+
+      {filteredItems.map((item, index) => (
         <ItemCard
           key={item.id}
           item={item}

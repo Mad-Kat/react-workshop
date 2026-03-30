@@ -8,6 +8,7 @@ import {
   type Ref,
   useCallback,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -63,12 +64,32 @@ export const FancyInput: FunctionComponent<{
 // Parent using the handle
 export const FancyInputDemo: FunctionComponent = () => {
   const fancyInputRef = useRef<FancyInputHandle>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [inputWidth, setInputWidth] = useState<number | null>(null);
+
+  // useLayoutEffect fires synchronously after DOM mutations but BEFORE paint.
+  // This means the width is measured and set before the user ever sees
+  // "measuring..." — no flash.
+  //
+  // If this were useEffect, the user would briefly see "measuring..." then
+  // the width — a visible flash. useLayoutEffect avoids this because React
+  // waits for it to finish before handing control to the browser to paint.
+  //
+  // Rule of thumb: useEffect for most side effects (data fetching, subscriptions).
+  // useLayoutEffect ONLY when you need to measure/mutate the DOM before paint.
+  useLayoutEffect(() => {
+    const input = containerRef.current?.querySelector("input");
+    if (input) {
+      setInputWidth(input.getBoundingClientRect().width);
+    }
+  }, []);
 
   return (
-    <div>
+    <div ref={containerRef}>
       <FancyInput ref={fancyInputRef} placeholder="Type here..." />
       <button onClick={() => fancyInputRef.current?.focus()}>Focus</button>
       <button onClick={() => fancyInputRef.current?.clear()}>Clear</button>
+      <p>Input width: {inputWidth !== null ? `${inputWidth}px` : "measuring..."}</p>
     </div>
   );
 };
@@ -133,6 +154,11 @@ export const ScrollSafeInput: FunctionComponent<{
  *
  * 3. useImperativeHandle: expose a custom API, not the raw DOM node.
  *    This is a deliberate API boundary — the parent gets specific methods.
+ *
+ * 4. useLayoutEffect: runs synchronously after DOM mutation, before paint.
+ *    Use it for DOM measurements (getBoundingClientRect, offsetHeight, etc.)
+ *    that must be reflected in the same paint. useEffect would cause a flash.
+ *    Rule: default to useEffect; only use useLayoutEffect when you see a flash.
  *
  * Real codebase references:
  *   - libraries/community-comment-form/src/communityCommentForm.tsx: forwardRef + useImperativeHandle (legacy)

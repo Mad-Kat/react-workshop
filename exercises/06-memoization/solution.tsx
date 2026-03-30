@@ -4,7 +4,7 @@
  */
 
 import type { FunctionComponent } from "react";
-import { memo, useEffect, useState } from "react";
+import { memo, useDeferredValue, useEffect, useState } from "react";
 import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
@@ -137,17 +137,36 @@ const ITEMS: Item[] = [
 
 export const ItemList: FunctionComponent = () => {
   const [tick, setTick] = useState(0);
+  const [search, setSearch] = useState("");
+
+  // Fix 6: useDeferredValue keeps the input responsive. React renders with
+  // the old deferred value first (instant), then re-renders with the new
+  // value at lower priority. If the user types again before the deferred
+  // render finishes, React abandons that render and starts over — the input
+  // never blocks.
+  const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
+  // Filter uses the deferred value — expensive cards re-render at low priority
+  const filteredItems = ITEMS.filter((item) =>
+    item.name.toLowerCase().includes(deferredSearch.toLowerCase()),
+  );
+
   return (
     <div>
       <p>Timer: {tick}s — render counts on cards should stay at 1</p>
 
-      {ITEMS.map((item, index) => (
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search items..."
+      />
+
+      {filteredItems.map((item, index) => (
         <ItemCard
           key={item.id}
           item={item}
@@ -181,6 +200,13 @@ export const ItemList: FunctionComponent = () => {
  *    a new reference every render, so memo never skips re-renders for that
  *    prop. Always hoist stable objects/arrays/functions outside the component
  *    (or use useMemo/useCallback when they depend on props/state).
+ *
+ * 6. useDeferredValue → wrap the search term so the input stays responsive.
+ *    React renders the old deferred value immediately (keeping the input
+ *    snappy), then re-renders with the new value at lower priority. If new
+ *    input arrives before the deferred render finishes, React abandons it —
+ *    no wasted work, no input lag. This is the declarative alternative to
+ *    manual debouncing.
  *
  * When IS memoization correct?
  * - useMemo on a context value to prevent all consumers re-rendering
