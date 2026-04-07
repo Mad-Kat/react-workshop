@@ -1,15 +1,17 @@
 /**
- * Exercise 09: Race Conditions & Cleanup
+ * Exercise 08: Race Conditions & Cleanup
  * ========================================
  *
  * Mental model: When a component fires an async request and re-renders
  * before the response arrives, the response is stale.
  *
+ * If you get stuck, open guide.md for step-by-step thinking.
+ *
  * Key reading: https://react.dev/learn/synchronizing-with-effects#fetching-data
  *
  * FORMAT: Build from scratch
  * You are given: the API, the hook interface, and the consumer component.
- * You implement: useProductSearch — a hook that fetches results and handles cleanup.
+ * You implement: the useEffect body with proper cleanup.
  */
 
 import type { FunctionComponent } from "react";
@@ -49,33 +51,20 @@ const searchProducts = async (
 };
 
 // ---------------------------------------------------------------------------
-// Exercise A: Implement useProductSearch
+// Exercise A: Implement useProductSearch (ignore flag approach)
 //
 // Build a hook that:
 //   1. Fetches search results when the query changes
 //   2. Returns [] when query is empty (without fetching)
 //   3. Prevents stale responses from overwriting newer results
 //
-// The hook should return: { results: SearchResult[], isLoading: boolean }
-//
-// Two approaches (implement one, discuss both):
-//
-//   Approach 1 — Ignore flag:
-//     Declare `let ignore = false` inside the effect. In the cleanup
-//     function, set `ignore = true`. Before calling setResults, check
-//     `if (!ignore)`. The request still completes, but stale results
-//     are discarded.
-//
-//   Approach 2 — AbortController:
-//     Create a new AbortController in the effect. Pass controller.signal
-//     to searchProducts. In the cleanup, call controller.abort(). This
-//     actually cancels the in-flight request (saves bandwidth).
-//     Remember to catch and ignore AbortError.
+// Start by implementing WITHOUT cleanup — observe the flickering.
+// Then add cleanup using an ignore flag.
 //
 // Questions to think about:
 //   - Why does the cleanup function run when query changes?
-//   - What's the trade-off between ignore flag and AbortController?
-//   - How does React guarantee the cleanup runs before the next effect?
+//   - Each effect invocation creates its own `ignore` — why?
+//   - What happens to isLoading when a stale response is ignored?
 // ---------------------------------------------------------------------------
 
 function useProductSearch(query: string): {
@@ -92,17 +81,17 @@ function useProductSearch(query: string): {
 }
 
 // ---------------------------------------------------------------------------
-// Exercise B: Implement useProductSearchWithAbort
+// Exercise B: Implement useProductSearchWithAbort (AbortController)
 //
-// Same as Exercise A, but use AbortController to actually cancel the
-// in-flight request rather than just ignoring the result.
+// Same goal as Exercise A, but actually cancel the in-flight request.
 //
-// Key differences from the ignore flag approach:
-//   - Create `new AbortController()` at the start of the effect
-//   - Pass `controller.signal` to `searchProducts(query, controller.signal)`
-//   - In cleanup, call `controller.abort()`
-//   - Catch the AbortError in a `.catch()` — abort errors are expected,
-//     not bugs. Check `err instanceof DOMException && err.name === "AbortError"`
+// Step 1: Create `new AbortController()` at the start of the effect
+// Step 2: Pass `controller.signal` to searchProducts
+// Step 3: In cleanup, call `controller.abort()`
+// Step 4: Catch AbortError and ignore it — abort errors are expected,
+//         not bugs. Check: `err instanceof DOMException && err.name === "AbortError"`
+//
+// Trade-off: ignore flag is simpler; AbortController saves bandwidth.
 // ---------------------------------------------------------------------------
 
 function useProductSearchWithAbort(query: string): {

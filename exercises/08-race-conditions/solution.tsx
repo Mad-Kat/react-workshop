@@ -1,5 +1,5 @@
 /**
- * Exercise 09: Race Conditions & Cleanup — SOLUTIONS
+ * Exercise 08: Race Conditions & Cleanup — SOLUTIONS
  * ====================================================
  */
 
@@ -51,6 +51,7 @@ function useProductSearch(query: string): {
   useEffect(() => {
     if (!query) {
       setResults([]);
+      setIsLoading(false);
       return;
     }
 
@@ -58,6 +59,10 @@ function useProductSearch(query: string): {
     setIsLoading(true);
 
     searchProducts(query).then((data) => {
+      // When ignore=true (stale effect), we skip both setResults AND setIsLoading.
+      // isLoading stays true — but that's correct: the CURRENT effect already set
+      // isLoading(true) and will call setIsLoading(false) when its fetch resolves.
+
       // Only update if this effect hasn't been cleaned up
       if (!ignore) {
         setResults(data);
@@ -88,6 +93,7 @@ function useProductSearchWithAbort(query: string): {
   useEffect(() => {
     if (!query) {
       setResults([]);
+      setIsLoading(false);
       return;
     }
 
@@ -95,6 +101,9 @@ function useProductSearchWithAbort(query: string): {
     setIsLoading(true);
 
     searchProducts(query, controller.signal)
+      // No ignore guard needed here: if cleanup ran, controller.abort() causes
+      // the promise to reject (AbortError → caught below), so .then() only
+      // fires for the current (non-aborted) request.
       .then((data) => {
         setResults(data);
         setIsLoading(false);

@@ -1,27 +1,8 @@
-import { useMemo, useState } from "react";
-import { WeatherStatusBadge, useNotificationPreference } from "../../exercises/02-state-shape/exercise.tsx";
+import { useState } from "react";
+import { WeatherStatusBadge } from "../../exercises/02-state-shape/exercise.tsx";
 
 type WeatherStatusIcon = "sunny" | "cloudy" | "rainy" | "unknown";
 const icons: WeatherStatusIcon[] = ["sunny", "cloudy", "rainy"];
-
-function NotificationDemo() {
-  // Simulate server state — this is what Relay would manage in production
-  const [serverEnabled, setServerEnabled] = useState(false);
-  const channel = useMemo(
-    () => ({ id: "ch-1", preference: { emailNotificationsEnabled: serverEnabled } }),
-    [serverEnabled],
-  );
-
-  const { isEnabled, togglePreference } = useNotificationPreference(channel, setServerEnabled);
-
-  return (
-    <div>
-      <p>Email notifications: {isEnabled ? "ON" : "OFF"}</p>
-      <p style={{ fontSize: 12, color: "#999" }}>Server state: {serverEnabled ? "ON" : "OFF"}</p>
-      <button onClick={togglePreference}>Toggle</button>
-    </div>
-  );
-}
 
 export default function Wrapper() {
   const [icon, setIcon] = useState<WeatherStatusIcon>("sunny");
@@ -37,9 +18,6 @@ export default function Wrapper() {
         <label><input type="checkbox" checked={offline} onChange={(e) => setOffline(e.target.checked)} /> offline</label>
       </div>
       <WeatherStatusBadge statusIcon={icon} isStationOffline={offline} forecast={offline ? null : { hasData: true }} />
-
-      <h2>B: Notification Preference</h2>
-      <NotificationDemo />
     </>
   );
 }

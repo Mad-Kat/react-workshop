@@ -1,27 +1,20 @@
 /**
- * Exercise 10: Actions & the Action Prop
+ * Exercise 09: Actions & the Action Prop
  * ========================================
  *
- * Mental model: React 19 introduces async actions — functions that run inside
- * a transition. This lets React track pending state, sequence updates, and
- * handle optimistic UI automatically, replacing a lot of manual useState ceremony.
+ * Mental model: Components own the transition, the optimistic state, and
+ * the pending UI. React 19 actions eliminate manual async state management.
+ *
+ * If you get stuck, open guide.md for the layer-by-layer approach.
  *
  * Key reading:
  *   - https://react.dev/reference/react/useActionState
  *   - https://react.dev/reference/react/useOptimistic
  *   - https://aurorascharff.no/posts/building-design-components-with-action-props-using-async-react/
- *   - https://github.com/rickhanlonii/async-react
- *
- * In our codebase:
- *   - `useTransition` is used in productListSerp.tsx for refetch transitions
- *   - `useOptimistic` replaces the manual `optimisticOverride ?? serverEnabled`
- *     pattern from Exercise 02 (NotificationPreference)
- *   - Action props are the pattern the React ecosystem is moving toward for
- *     design components — Relay mutations fit naturally into this model
  */
 
 import type { FunctionComponent } from "react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 // ---------------------------------------------------------------------------
 // Shared types and fake API
@@ -143,41 +136,37 @@ export const TodoListManual: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Exercise B: Convert to Action Props Pattern
 //
-// Rewrite the todo list above using:
-//   1. `useTransition` — gives you `isPending` for free, prevents double-submit
-//   2. `useOptimistic` — shows the optimistic item, auto-reverts on failure
-//   3. Form `action` prop — an async function React calls during a transition
+// Rewrite the todo list using React 19 actions. Work in layers:
 //
-// Target: the only state you should need is `todos` (the confirmed list).
-// `isPending`, error display on revert, and optimistic items are handled by
-// the new hooks.
+// Layer 1 — Replace isPending with useTransition:
+//   - `const [isPending, startTransition] = useTransition()`
+//   - Wrap the async work in `startTransition(async () => { ... })`
+//   - Delete setIsPending(true/false) — it's automatic now
+//   - You'll need to add useTransition and useOptimistic to your imports
 //
-// Steps:
-//   1. Replace `const [isPending, setIsPending] = useState(false)` with
-//      `const [isPending, startTransition] = useTransition()`
-//   2. Replace `const [optimisticTodo, ...]` with `useOptimistic`
-//   3. Change `<form onSubmit={...}>` to `<form action={...}>` where the
-//      action is an async function that receives FormData
-//   4. Remove all the manual setIsPending / setOptimisticTodo / try/finally
-//   5. Bonus: extract the submit button into a `SubmitButton` component that
-//      uses `useFormStatus()` to read pending state from the parent form —
-//      no isPending prop drilling needed
+// Layer 2 — Replace optimistic state with useOptimistic:
+//   - `const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+//        todos, (state, newTodo: Todo) => [...state, newTodo]
+//      )`
+//   - Call addOptimisticTodo inside the transition for instant feedback
+//   - When the transition ends (success or failure), it auto-reverts
 //
-// Note: when the action throws, useOptimistic automatically reverts the
-// optimistic item — you don't need to manually call setOptimisticTodo(null).
+// Layer 3 — Replace onSubmit with form action:
+//   - `<form action={async (formData) => { ... }}>`
+//   - Read input value: `formData.get("text")`
+//   - No e.preventDefault(), no controlled input state needed
+//   - React resets the form automatically after the action completes
+//
+// Bonus: Extract a SubmitButton that uses useFormStatus() from react-dom
 // ---------------------------------------------------------------------------
 
 export const TodoListWithActions: FunctionComponent = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
 
-  // TODO 1: Replace with useTransition
-  // const [isPending, startTransition] = useTransition();
+  // Layer 1 (provided): useTransition tracks isPending automatically
+  const [isPending, startTransition] = useTransition();
 
-  // TODO 2: Replace with useOptimistic
-  // const [optimisticTodos, addOptimisticTodo] = useOptimistic(
-  //   todos,
-  //   (state, newTodo: Todo) => [...state, newTodo],
-  // );
+  // TODO 2: Replace optimistic state with useOptimistic
 
   // TODO 3: Define an async action function that:
   //   - reads the text from FormData

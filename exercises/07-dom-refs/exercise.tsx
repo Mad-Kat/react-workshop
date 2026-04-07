@@ -1,15 +1,11 @@
 /**
- * Exercise 08: DOM Refs & the Safe Mutation Window
+ * Exercise 07: DOM Refs & the Safe Mutation Window
  * ==================================================
  *
  * Mental model: Safe to read/mutate DOM in event handlers and effects
  * (after commit), never during render.
  *
- * This exercise also covers useLayoutEffect — the synchronous sibling of
- * useEffect that fires after DOM mutations but BEFORE the browser paints.
- * Use it when you need to measure or mutate the DOM without a visual flash.
- *
- * These are patterns found in our codebase.
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
  * Key reading:
  *   - https://react.dev/learn/manipulating-the-dom-with-refs
@@ -53,13 +49,17 @@ export const FancyInput: FunctionComponent<{
 
 // Parent component that uses FancyInput
 export const FancyInputDemo: FunctionComponent = () => {
-  // TODO: Create a ref with the FancyInputHandle type
-  // TODO: Call ref.current.focus() and ref.current.clear() from buttons
+  // TODO 1: Create a ref with the FancyInputHandle type
+  // TODO 2: Wire up the Focus and Clear buttons to use the ref
   //
-  // Also: after the input mounts, measure its width and display it.
-  // Using useEffect for DOM measurement causes a flash (render → paint →
-  // measure → update → repaint). Which hook avoids this?
-  // Hint: https://react.dev/reference/react/useLayoutEffect
+  // TODO 3: Measure the input width after mount and display it below.
+  //   - Using useEffect causes a flash (render → paint → measure → repaint).
+  //   - Which hook runs after DOM mutation but BEFORE the browser paints?
+  //   - Note: your FancyInputHandle ref only has focus() and clear() —
+  //     you'll need a separate container ref for DOM measurement.
+  //   Tip: if you don't see a flash with useEffect, open Chrome DevTools →
+  //   Performance → CPU: 6x slowdown. Try useEffect first, then switch to
+  //   useLayoutEffect to see the difference.
 
   return (
     <div>
@@ -75,8 +75,9 @@ export const FancyInputDemo: FunctionComponent = () => {
 // Exercise B: Ref callback with cleanup function
 //
 // >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function.
-// >> Before React 19, the callback was called with `null` on detach — now you
-// >> return a cleanup function like useEffect. Show the before/after.
+// >> The callback is only called with the node (never null). Detach is
+// >> handled by the returned cleanup function. Before React 19, the
+// >> callback was called with null on detach, which was confusing.
 //
 // A number input that should prevent scroll-to-change behavior.
 // Currently uses useRef + useEffect — refactor to use a ref callback

@@ -4,21 +4,9 @@
  *
  * Mental model: If you can compute it during render, don't put it in state.
  *
- * The components below have redundant state synced via useEffect.
- * For each one:
- *   1. Identify whether the state is redundant
- *   2. Decide: derive inline, remove entirely, or justify keeping it
- *   3. Refactor — remove the effect and derive during render where possible
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
- * Key reading: https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state
- *
- * For the TemperatureReading in Exercise A, also revisit the useReducer section
- * from "A Complete Guide to useEffect" (cited in Exercise 01):
- * https://overreacted.io/a-complete-guide-to-useeffect/
- * — "When setting a state variable depends on the current value of another
- * state variable, you might want to try replacing them both with useReducer."
- *
- * For Exercise B, also read: https://react.dev/reference/react/useOptimistic
+ * Key reading: https://react.dev/learn/you-might-not-need-an-effect
  */
 
 import type { FunctionComponent } from "react";
@@ -29,8 +17,13 @@ import { RenderCount } from "../RenderCount";
 // ---------------------------------------------------------------------------
 // Exercise A: Weather Status Badge
 //
-// The `badge` state just mirrors the `statusIcon` prop via an effect.
-// Is the state needed?
+// Something feels off about this component. Look at the useState + useEffect
+// pair and the setBadge calls during render.
+//
+// Step 1: List every value that `badge` can be. Where does each come from?
+// Step 2: Can you express all of those as a function of the props alone?
+// Step 3: If yes — what can you delete?
+// Step 4: Check the RenderCount before and after. Why did it change?
 // ---------------------------------------------------------------------------
 
 type WeatherStatusIcon = "sunny" | "cloudy" | "rainy" | "unknown";
@@ -54,14 +47,14 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
 
   if (isStationOffline) {
     if (badge !== "unknown") {
-      setBadge("unknown"); // setState during render!
+      setBadge("unknown");
     }
     return <span>Station offline ({badge}) <RenderCount count={renderCount} /></span>;
   }
 
   if (!forecast) {
     if (badge !== "unknown") {
-      setBadge("unknown"); // setState during render!
+      setBadge("unknown");
     }
     return <span>No forecast data ({badge}) <RenderCount count={renderCount} /></span>;
   }
@@ -70,18 +63,17 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Exercise A (continued): Temperature Reading
+// Exercise B: Temperature Reading
 //
-// The temperature and unit are coupled — toggling the unit requires converting
-// the temperature value. The current code uses an effect with a "previous unit"
-// tracking variable to detect changes.
+// This component converts temperature when the unit toggles. It uses an
+// effect to detect the change and apply the conversion.
 //
-// From "A Complete Guide to useEffect" (cited in Exercise 01):
-// "When setting a state variable depends on the current value of another
-// state variable, you might want to try replacing them both with useReducer."
-//
-// 1. Identify the redundant state (prevUnit)
-// 2. Refactor: replace the coupled useState + effect with a single useReducer
+// Step 1: How many useState calls are there? Which ones change together?
+// Step 2: Can you change `unit` without also changing `temperature`?
+//         If they MUST change together, they belong in the same state update.
+// Step 3: What primitive lets you update two values atomically based on
+//         the current state? (Hint: it's like a state machine)
+// Step 4: After refactoring, what state variables can you delete entirely?
 // ---------------------------------------------------------------------------
 
 export const TemperatureReading: FunctionComponent<{
@@ -118,44 +110,3 @@ export const TemperatureReading: FunctionComponent<{
     </div>
   );
 };
-
-// ---------------------------------------------------------------------------
-// Exercise B: Notification Preference Toggle
-//
-// `isEnabled` mirrors remote data from `channel`, synced via effect.
-// But it's also set optimistically in the mutation callback.
-// Is this one redundant? Or is there a reason to keep it?
-//
-// Hint: There IS a reason to keep optimistic state here, but the effect
-// is still an anti-pattern. The solution uses useOptimistic — a React
-// hook purpose-built for exactly this pattern.
-// Docs: https://react.dev/reference/react/useOptimistic
-// ---------------------------------------------------------------------------
-
-interface NotificationChannel {
-  id: string;
-  preference: { emailNotificationsEnabled: boolean } | null;
-}
-
-export function useNotificationPreference(
-  channel: NotificationChannel | null,
-  onMutate: (enabled: boolean) => void,
-) {
-  const initialEnabled =
-    channel?.preference?.emailNotificationsEnabled || false;
-
-  const [isEnabled, setIsEnabled] = useState(initialEnabled);
-
-  useEffect(() => {
-    setIsEnabled(initialEnabled);
-  }, [channel, initialEnabled]);
-
-  const togglePreference = () => {
-    const shouldEnable = !isEnabled;
-    setIsEnabled(shouldEnable);
-    // Simulate server mutation — onMutate updates the "server" state
-    setTimeout(() => onMutate(shouldEnable), 500);
-  };
-
-  return { isEnabled, togglePreference };
-}

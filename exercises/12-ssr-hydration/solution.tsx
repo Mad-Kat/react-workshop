@@ -1,5 +1,5 @@
 /**
- * Exercise 15: SSR & Hydration — SOLUTION
+ * Exercise 12: SSR & Hydration — SOLUTION
  * =========================================
  */
 

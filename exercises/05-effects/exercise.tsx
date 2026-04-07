@@ -2,31 +2,12 @@
  * Exercise 05: What Effects Are Actually For
  * ============================================
  *
- * FRAMING — React's Reactivity Model
+ * Mental model: An Effect synchronizes React with something EXTERNAL.
+ * If there's no external system involved, it's not an effect.
  *
- * Unlike Solid, Svelte, or Vue — which track dependencies at the signal level —
- * React tracks at the component level. When any state changes, the ENTIRE
- * component function re-runs. This is "coarse-grained reactivity."
- *
- * This means:
- *   - Anything you can derive from state/props is FREE to compute during render
- *   - Effects are escape hatches for synchronizing with EXTERNAL systems
- *   - If you can express something as a derivation or event response, it's not an effect
- *
- * Reference: https://docs.solidjs.com/advanced-concepts/fine-grained-reactivity (for contrast)
- *
- * ----
- *
- * Mental model: An Effect is "code that keeps React synchronized with
- * something external." Two things that are NOT effects:
- *   - Data transformation → derive during render
- *   - User event responses → put in the event handler
- *
- * Classify each effect below: derivation, event handler, or legitimate effect.
- * Then refactor the non-effects.
+ * If you get stuck, open guide.md for the decision tree.
  *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect
- *
  */
 
 import type { FunctionComponent } from "react";
@@ -37,13 +18,12 @@ import { RenderCount } from "../RenderCount";
 // ---------------------------------------------------------------------------
 // Exercise: Room Booking Panel
 //
-// This component has FOUR effects. Classify each one:
-//   A) Should be a derivation (compute during render)
-//   B) Should be in an event handler
-//   C) Legitimate effect (external system sync)
-//   D) Legitimate effect (external system sync)
+// This component has FOUR useEffect calls. Not all of them should be effects.
 //
-// Then refactor A and B.
+// For each one, decide: is it a legitimate effect, or is it doing something
+// that belongs elsewhere? Refactor the ones that shouldn't be effects.
+//
+// After refactoring, compare the RenderCount. Why did it decrease?
 // ---------------------------------------------------------------------------
 
 interface Room {
@@ -60,7 +40,7 @@ const trackEvent = (event: string, data: Record<string, unknown>) => {
 };
 
 // Simulates subscribing to live occupancy score updates
-const subscribeToOccupancyUpdates = (
+const subscribeToLiveRateUpdates = (
   roomId: string,
   callback: (newScore: number) => void,
 ): (() => void) => {
@@ -70,24 +50,26 @@ const subscribeToOccupancyUpdates = (
   return () => clearInterval(interval);
 };
 
-export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
+export const RoomBookingPanel: FunctionComponent<{
+  room: Room;
+  onConfirm?: (data: { roomId: string; guests: number; totalRate: number }) => void;
+}> = ({
   room,
+  onConfirm,
 }) => {
   const renderCount = useRenderCount();
 
   const [guests, setGuests] = useState(1);
-  const [liveScore, setLiveScore] = useState(room.ratePerGuest);
+  const [liveRate, setLiveRate] = useState(room.ratePerGuest);
   const [confirmed, setConfirmed] = useState(false);
 
-  // Effect A: Computes total rate from rate and guest count
-  // Is this a derivation, event handler, or legitimate effect?
+  // Effect A
   const [totalRate, setTotalRate] = useState(room.ratePerGuest * guests);
   useEffect(() => {
-    setTotalRate(liveScore * guests);
-  }, [liveScore, guests]);
+    setTotalRate(liveRate * guests);
+  }, [liveRate, guests]);
 
-  // Effect B: Sends analytics when user confirms the booking
-  // Is this a derivation, event handler, or legitimate effect?
+  // Effect B
   useEffect(() => {
     if (confirmed) {
       trackEvent("booking_confirmed", {
@@ -95,21 +77,20 @@ export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
         guests,
         totalRate,
       });
+      onConfirm?.({ roomId: room.id, guests, totalRate });
       setConfirmed(false);
     }
-  }, [confirmed, room.id, guests, totalRate]);
+  }, [confirmed, room.id, guests, totalRate, onConfirm]);
 
-  // Effect C: Subscribes to live occupancy score updates via WebSocket
-  // Is this a derivation, event handler, or legitimate effect?
+  // Effect C
   useEffect(() => {
-    const unsubscribe = subscribeToOccupancyUpdates(room.id, (newScore) => {
-      setLiveScore(newScore);
+    const unsubscribe = subscribeToLiveRateUpdates(room.id, (newScore) => {
+      setLiveRate(newScore);
     });
     return unsubscribe;
   }, [room.id]);
 
-  // Effect D: Listens for keyboard shortcut (Escape to reset guest count)
-  // Is this a derivation, event handler, or legitimate effect?
+  // Effect D
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -127,7 +108,7 @@ export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
   return (
     <div>
       <h1>Exercise 05 — {room.name}</h1>
-      <p>Rate per guest: ${liveScore}</p>
+      <p>Rate per guest: ${liveRate}</p>
       <p>
         Guests:
         <input

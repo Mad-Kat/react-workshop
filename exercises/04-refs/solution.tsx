@@ -5,6 +5,12 @@
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type StationStatus,
+  type WeatherReading,
+  fetchWeatherReading,
+  fakeSearch,
+} from "./api";
 
 // ---------------------------------------------------------------------------
 // Solution A: Weather Station Poller
@@ -17,30 +23,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 //   - makes cleanup stable (no intervalId/timeoutId deps)
 //   - stops the main effect from re-running on every fetch
 // ---------------------------------------------------------------------------
-
-type StationStatus = "ONLINE" | "OFFLINE";
-
-interface WeatherReading {
-  stationId: string;
-  status: StationStatus;
-  temperatureCelsius: number;
-}
-
-const fetchWeatherReading = (stationId: string): Promise<WeatherReading> =>
-  new Promise((resolve, reject) => {
-    const shouldFail = Math.random() < 0.1;
-    setTimeout(() => {
-      if (shouldFail) {
-        reject(new Error("Network error"));
-      } else {
-        resolve({
-          stationId,
-          status: Math.random() < 0.05 ? "OFFLINE" : "ONLINE",
-          temperatureCelsius: Math.floor(Math.random() * 40),
-        });
-      }
-    }, 200);
-  });
 
 export function useWeatherStationPoller(stationId: string | null) {
   // Only `data` is rendered — it stays in state
@@ -166,13 +148,6 @@ export const WeatherStationDisplay: FunctionComponent<{
 // The display still re-renders because currentSearchTerm (state) changes —
 // but the ref holds the correct "previous" value at the exact right moment.
 // ---------------------------------------------------------------------------
-
-const fakeSearch = (term: string): Promise<string[]> =>
-  new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([`${term} result 1`, `${term} result 2`, `${term} result 3`]);
-    }, 300);
-  });
 
 export const DebouncedSearch: FunctionComponent = () => {
   const [inputValue, setInputValue] = useState("");

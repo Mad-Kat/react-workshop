@@ -1,13 +1,13 @@
 /**
- * Exercise 12: Error Boundaries — Where They Catch, Where They Don't
+ * Exercise 11: Error Boundaries — Where They Catch, Where They Don't
  * ===================================================================
  *
  * Mental model: Error boundaries catch rendering errors. They do NOT catch
  * event handlers, async code, or SSR errors.
  *
- * These are patterns found in our codebase.
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
- * Exercise: Build a product detail page with isolated error boundaries.
+ * These are patterns found in our codebase.
  */
 
 import type { FunctionComponent, ReactNode } from "react";
@@ -102,16 +102,16 @@ const RecommendationsSection: FunctionComponent<{ shouldFail?: boolean }> = ({ s
 //
 // Currently, if ANY section throws, the whole page crashes.
 //
-// TODO:
-//   1. Wrap each section in its own ErrorBoundary
-//   2. ProductInfo (critical): show full error message + retry button
-//   3. ReviewsSection (non-critical): show "Reviews unavailable" + retry
-//   4. RecommendationsSection (non-critical): silently hide on error (fallback = null)
-//   5. Test by toggling the failure switches
+// Part 1: Isolate failures
+//   Each section has different criticality. The product info is essential,
+//   reviews are nice-to-have, recommendations are optional.
+//   Wrap each section in its own ErrorBoundary with an appropriate fallback.
+//   (Read the ErrorBoundary class above — especially the fallback prop type.)
+//   Test with the failure toggles to verify isolation works.
 //
-// Bonus: Our codebase supports targeted errors that only specific boundaries
-// catch. Discuss why this is useful (e.g., a nested boundary for one product
-// block shouldn't catch errors from a sibling block).
+// Part 2: Discover what boundaries DON'T catch
+//   Uncomment BrokenButton below. Wrap it in an ErrorBoundary.
+//   Click it. Does the boundary catch the error? Why not?
 // ---------------------------------------------------------------------------
 
 export const ProductDetailPage: FunctionComponent = () => {
@@ -150,28 +150,25 @@ export const ProductDetailPage: FunctionComponent = () => {
   );
 };
 
-// Suppress unused import — available for students to use in their solution
+// Suppress unused import — available for you to use in your solution
 void ErrorBoundary;
 
 // ---------------------------------------------------------------------------
-// Discussion: What Error Boundaries DON'T Catch
+// Part 2: What Boundaries DON'T Catch
 //
-// Try this: add an onClick handler that throws. What happens?
+// Step 5: Uncomment this component. Wrap it in an ErrorBoundary.
+// Click the button. Does the boundary catch the error?
 //
+// Error boundaries catch errors during RENDERING (the return statement).
+// They do NOT catch:
+//   - Event handlers (use try/catch in the handler)
+//   - Async code (Promises, setTimeout)
+//   - SSR errors
+//   - Errors in the boundary itself
+// ---------------------------------------------------------------------------
+
 // const BrokenButton: FunctionComponent = () => (
 //   <button onClick={() => { throw new Error("Event handler error"); }}>
-//     Click me
+//     Click me (will the boundary catch this?)
 //   </button>
 // );
-//
-// Error boundaries do NOT catch:
-//   - Event handlers (use try/catch)
-//   - Async code (Promises, setTimeout)
-//   - SSR errors (server-side rendering)
-//   - Errors in the boundary itself
-//
-// Our codebase handles this with:
-//   - a custom useErrorHandler() hook for targeted throw-to-boundary patterns
-//   - try/catch in event handlers + useState for error display
-//   - a throwErrorHandler utility for Relay-integrated errors
-// ---------------------------------------------------------------------------

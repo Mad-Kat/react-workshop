@@ -1,5 +1,5 @@
 /**
- * Exercise 07: Memoization Pitfalls — SOLUTIONS
+ * Exercise 06: Memoization Pitfalls — SOLUTIONS
  * ================================================
  */
 
@@ -97,8 +97,8 @@ interface Item {
   category: string;
 }
 
-// Fix 5 (part a): wrap ItemCard in React.memo so the parent timer does not
-// cause re-renders when props are unchanged
+// Fix 5: ItemCard is already wrapped in React.memo (see exercise file). The fix is
+// extracting the inline style object to a stable reference — see FEATURED_CARD_STYLE below.
 const ItemCard = memo<{
   item: Item;
   style?: React.CSSProperties;

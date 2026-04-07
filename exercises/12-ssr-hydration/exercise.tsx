@@ -1,36 +1,18 @@
 /**
- * Exercise 15: SSR & Hydration
+ * Exercise 12: SSR & Hydration
  * ==============================
  *
- * Mental model: SSR renders HTML on the server; the client hydrates it by
- * attaching event listeners to the existing DOM. Both passes run your hooks.
- * Server has no window, no localStorage, no DOM. The FIRST client render must
- * produce identical HTML to what the server rendered — any difference is a
- * hydration mismatch.
+ * Mental model: Server has no window, no localStorage, no DOM. The FIRST
+ * client render MUST produce identical HTML to what the server rendered —
+ * any difference is a hydration mismatch.
  *
- * These are patterns found in our codebase.
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
- * Fix three problems: two server crashes and one hydration mismatch.
+ * Fix three problems below: two server crashes and one hydration mismatch.
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useState, useSyncExternalStore } from "react";
-
-// ---------------------------------------------------------------------------
-// PROVIDED: useIsHydrated helper (don't modify)
-//
-// Uses useSyncExternalStore so the server snapshot (false) is distinct from
-// the client snapshot (true). Safe to use as a hydration gate.
-// Same implementation as blocks/client-side-render/src/useIsHydrated.ts
-// ---------------------------------------------------------------------------
-
-const emptySubscribe = () => () => {};
-const returnTrueFn = () => true;
-const returnFalseFn = () => false;
-
-function useIsHydrated(): boolean {
-  return useSyncExternalStore(emptySubscribe, returnTrueFn, returnFalseFn);
-}
+import { useState, useSyncExternalStore } from "react";
 
 // ---------------------------------------------------------------------------
 // Exercise A: ResponsiveLayout — window.innerWidth crash
@@ -38,9 +20,15 @@ function useIsHydrated(): boolean {
 // This component crashes on the server because `window` is not defined.
 // It reads window.innerWidth directly during render.
 //
-// TODO: Fix using useSyncExternalStore with a getServerSnapshot that returns null.
-//       While width is null (server + hydration), render a safe fallback.
-//       On the client, subscribe to resize events for live updates.
+// TODO: Fix the server crash.
+//   Step 1: window.innerWidth crashes on the server. You need an API that
+//           provides a server-safe default AND subscribes to changes on client.
+//   Step 2: useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+//           - subscribe: listen for 'resize' events
+//           - getSnapshot: return window.innerWidth
+//           - getServerSnapshot: return null (safe default for server)
+//   Step 3: When width is null (server + first client render), render a
+//           placeholder. After hydration, the real width takes over.
 // ---------------------------------------------------------------------------
 
 export const ResponsiveLayout: FunctionComponent = () => {
@@ -75,10 +63,17 @@ export const ResponsiveLayout: FunctionComponent = () => {
 // Bug 2: Math.random() generates a different id on server vs client,
 // producing a hydration mismatch on the id/htmlFor attributes.
 //
-// TODO: Fix Bug 1 using a typeof window guard in the initializer function.
-//       The server (and first client render) should default to "light".
-// TODO: Fix Bug 2 using useId() for a stable, SSR-safe identifier.
-//       Key reading: https://react.dev/reference/react/useId
+// TODO: Fix Bug 1 — localStorage crash on server.
+//   Step 1: The useState initializer runs during render — including on server.
+//   Step 2: Extract a function (e.g., getInitialTheme) that checks
+//           `typeof window === "undefined"` and returns "light" as default.
+//   Step 3: Pass the function REFERENCE to useState (not a function call):
+//           `useState(getInitialTheme)` — React calls it once on mount.
+//
+// TODO: Fix Bug 2 — Math.random() hydration mismatch.
+//   Step 1: Math.random() produces different values on server vs client.
+//   Step 2: useId() generates a stable identifier that matches both sides.
+//   Key reading: https://react.dev/reference/react/useId
 // ---------------------------------------------------------------------------
 
 export const ThemeSelector: FunctionComponent = () => {
@@ -136,10 +131,3 @@ export const SSRExercises: FunctionComponent = () => {
   );
 };
 
-/**
- * Hints (try without these first):
- *
- * A: useSyncExternalStore has a third argument — getServerSnapshot. Return null from it.
- * B (Bug 1): useState accepts a function — check typeof window inside it.
- * B (Bug 2): useId() generates stable identifiers that match between server and client.
- */

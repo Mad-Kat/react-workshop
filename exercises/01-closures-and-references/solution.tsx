@@ -9,7 +9,7 @@
 import type { FunctionComponent } from "react";
 
 // ---------------------------------------------------------------------------
-// Solution A: Closures — all answers
+// Solution A: Closures — functions capture variables, not snapshots (answers)
 // ---------------------------------------------------------------------------
 
 export const ClosuresExercise: FunctionComponent = () => {
@@ -68,7 +68,6 @@ log();`}</pre>
         <div style={{ padding: 12, background: "#fef2f2", borderRadius: 8 }}>
           <strong>Snippet 4: setTimeout captures a snapshot</strong>
           <pre style={{ fontSize: 13, margin: "8px 0" }}>{`currentValue = 1;
-setValue(currentValue);
 setTimeout(() => {
   console.log("after 1s, currentValue:", currentValue);
 }, 1000);
@@ -111,7 +110,7 @@ export const ReferenceEqualityExercise: FunctionComponent = () => {
           { code: "42 === 42", result: "true", note: "Primitives compare by value" },
           { code: "{} === {}", result: "false", note: "Two objects = two references" },
           { code: "[] === []", result: "false", note: "Two arrays = two references" },
-          { code: "const a = {x:1}; b = a; a === b", result: "true", note: "Same reference" },
+          { code: "const a = {x:1}; const b = a; a === b", result: "true", note: "Same reference" },
           { code: "(() => 42) === (() => 42)", result: "false", note: "Two functions = two references" },
           { code: '{limit:20} === {limit:20}', result: "false", note: "Same content, different references!" },
           { code: "JSON.stringify(obj) === JSON.stringify(obj)", result: "true", note: "Strings are primitives" },

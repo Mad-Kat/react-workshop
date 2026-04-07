@@ -1,18 +1,11 @@
 /**
- * Exercise 11: Suspense with use()
+ * Exercise 10: Suspense with use()
  * ==================================
  *
  * Mental model: Suspense says "this subtree is waiting for something —
  * show a fallback until it's ready."
  *
- * React 19 introduces the `use(promise)` hook, which lets a component
- * suspend by reading from a Promise directly — no custom resource wrapper
- * needed. The old pattern (throwing promises manually via `createResource`)
- * is now replaced by a first-class hook.
- *
- * These are patterns found in our codebase.
- *
- * Exercise: Convert a component from manual loading states to Suspense + use().
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
  * Key reading:
  *   - https://react.dev/reference/react/use
@@ -151,46 +144,15 @@ export const ProductPageManual: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Exercise Part 2: Build the Suspense + use() version
 //
-// Part 1 shows 6 state variables just to track loading/error for two fetches.
-// Suspense inverts this: instead of the COMPONENT managing loading state,
-// React manages it. The component just reads data — if it's not ready yet,
-// React shows the nearest <Suspense> fallback automatically.
+// Goal: replace 6 state variables with 0. Let React manage loading states.
 //
-// React 19's `use(promise)` hook suspends the component until the promise
-// resolves — just like the old `createResource` approach, but without any
-// wrapper. The Suspense boundary catches the suspension and shows a fallback.
-// The ErrorBoundary catches rejected promises and shows an error fallback.
-//
-// How `use()` relates to Relay:
-//   Relay internally uses the same Suspense mechanism. When you call
-//   `useFragment` or `useLazyLoadQuery`, Relay checks if the data is in the
-//   store. If not, it throws a Promise — Suspense catches it and shows the
-//   fallback. `use()` is the same pattern made available to application code.
-//
-// TODO:
-//   1. Create promises OUTSIDE the component (they start fetching immediately)
-//      const productPromise = fetchProduct();
-//      const reviewsPromise = fetchReviews();
-//
-//   2. Build ProductInfo and ReviewsList components that call use(promise)
-//      to suspend until data is ready
-//
-//   3. Wrap ProductInfo in:
-//        <SimpleErrorBoundary fallback={<p>Failed to load product.</p>}>
-//          <Suspense fallback={<div>Loading product...</div>}>
-//            <ProductInfo />
-//          </Suspense>
-//        </SimpleErrorBoundary>
-//
-//   4. Wrap ReviewsList in a SEPARATE Suspense + SimpleErrorBoundary with
-//      fallback "Reviews unavailable" (non-critical — degrade gracefully)
-//
-//   5. Observe: product appears at 800ms, reviews at 1500ms — independently.
-//      The manual version above couldn't do this without extra complexity.
-//
-// Hint: `use()` can only be called inside a component (like other hooks).
-//       The promise must be created OUTSIDE the component so it doesn't
-//       restart on every render.
+// Step 1: Create promises outside the component (at module scope)
+// Step 2: Build ProductInfo and ReviewsList — each calls use(promise)
+//         (You'll need to add Suspense and use to your imports from 'react')
+// Step 3: Compose them in ProductPageWithSuspense:
+//         - Each section gets its own Suspense boundary (independent loading)
+//         - Wrap Suspense in SimpleErrorBoundary (error catches on outside)
+//         - Product is critical → show error. Reviews are non-critical → degrade.
 // ---------------------------------------------------------------------------
 
 // TODO: Create promises outside the component
@@ -217,28 +179,12 @@ class SimpleErrorBoundary extends Component<
   }
 }
 
-// TODO: Build ProductInfo component
-// function ProductInfo() {
-//   const product = use(productPromise);
-//   return (
-//     <div>
-//       <h2>{product.name}</h2>
-//       <p>CHF {product.price.toFixed(2)}</p>
-//       <p>{product.description}</p>
-//     </div>
-//   );
-// }
+// TODO: Build a ProductInfo component that reads from productPromise using use()
+// It should render the product name, price, and description.
 
-// TODO: Build ReviewsList component
-// function ReviewsList() {
-//   const reviews = use(reviewsPromise);
-//   return (
-//     <div>
-//       <h3>Reviews</h3>
-//       {reviews.map((review) => (...))}
-//     </div>
-//   );
-// }
+// TODO: Build a ReviewsList component that reads from reviewsPromise using use()
+// It should render each review with author, rating stars, and text.
+// (You can copy the review rendering from ProductPageManual above)
 
 // TODO: Build ProductPageWithSuspense using Suspense + SimpleErrorBoundary
 export const ProductPageWithSuspense: FunctionComponent = () => {

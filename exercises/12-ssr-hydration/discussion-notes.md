@@ -1,4 +1,4 @@
-# Exercise 15 — Discussion Notes (10 min)
+# Exercise 12 — Discussion Notes (10 min)
 
 Use these after the exercise to open the conversation toward where React is heading.
 

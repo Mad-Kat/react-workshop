@@ -1,5 +1,5 @@
 /**
- * Exercise 12: Error Boundaries — Where They Catch, Where They Don't — SOLUTIONS
+ * Exercise 11: Error Boundaries — Where They Catch, Where They Don't — SOLUTIONS
  * ================================================================================
  */
 

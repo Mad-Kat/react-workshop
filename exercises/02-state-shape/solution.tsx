@@ -4,7 +4,7 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useOptimistic, useReducer, useTransition } from "react";
+import { useReducer } from "react";
 import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
@@ -50,7 +50,7 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Solution A (continued): Temperature Reading
+// Solution B: Temperature Reading
 //
 // The coupled useState + effect is replaced by a single useReducer.
 // The reducer atomically handles the unit toggle + temperature conversion.
@@ -109,61 +109,11 @@ export const TemperatureReading: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: Notification Preference Toggle
-//
-// The effect syncing `isEnabled` with `initialEnabled` was the anti-pattern —
-// it caused a double-render every time `channel` changed.
-//
-// useOptimistic is the right tool here: it holds an optimistic value while
-// a transition is in flight, then automatically settles on the server truth
-// when `serverEnabled` updates.
-//
-// Key: useOptimistic only holds the value during a transition. We use
-// startTransition with an async function that awaits the mutation.
-//
-// Docs: https://react.dev/reference/react/useOptimistic
-// ---------------------------------------------------------------------------
-
-interface NotificationChannel {
-  id: string;
-  preference: { emailNotificationsEnabled: boolean } | null;
-}
-
-export function useNotificationPreference(
-  channel: NotificationChannel | null,
-  onMutate: (enabled: boolean) => void,
-) {
-  const serverEnabled =
-    channel?.preference?.emailNotificationsEnabled || false;
-
-  const [optimisticEnabled, setOptimisticEnabled] =
-    useOptimistic(serverEnabled);
-
-  const [, startTransition] = useTransition();
-
-  const togglePreference = () => {
-    const shouldEnable = !optimisticEnabled;
-
-    startTransition(async () => {
-      // Set optimistic value — visible immediately
-      setOptimisticEnabled(shouldEnable);
-      // Await the "server" mutation — transition stays pending until this resolves
-      await new Promise<void>((resolve) =>
-        setTimeout(() => {
-          onMutate(shouldEnable);
-          resolve();
-        }, 500),
-      );
-      // When the transition settles, useOptimistic reverts to the new
-      // serverEnabled (which onMutate just updated), confirming the change.
-    });
-  };
-
-  return { isEnabled: optimisticEnabled, togglePreference };
-}
-
-// ---------------------------------------------------------------------------
-// Real codebase references:
-//   - libraries/product-availability/src/availabilityLegacy.tsx: state mirroring prop
-//   - libraries/product-updates-notifications/src/productDetailPage/useSubscribeToPriceChange.tsx: state mirroring Relay data
+// Key takeaways:
+//   1. If you can compute a value from existing state/props → derive inline.
+//      No useState, no useEffect, fewer renders.
+//   2. If two state variables must change atomically → useReducer.
+//      dispatch is stable (never changes identity) — bonus for effects.
+//   3. RenderCount should decrease after each fix. Derived state = zero
+//      extra render cycles. useReducer = one dispatch, one render.
 // ---------------------------------------------------------------------------

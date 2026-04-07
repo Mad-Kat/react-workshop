@@ -9,23 +9,26 @@
  * For each snippet, predict the output BEFORE clicking "Run".
  * Then click to verify. The goal is to build intuition, not to fix code.
  *
+ * After predicting, open guide.md for detailed explanations of WHY
+ * each snippet behaves the way it does and how it connects to React.
+ *
  * Key reading:
  *   - https://overreacted.io/a-complete-guide-to-useeffect/ (closures section)
  *   - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Exercise A: Closures — functions capture values at creation time
+// Exercise A: Closures — functions capture variables, not snapshots
 //
 // Each snippet has a "What will be logged?" question.
 // Predict the output, then click "Run" to verify.
 // ---------------------------------------------------------------------------
 
 // Snippet 1: Basic closure capture
-function createSnippet1() {
+export function createSnippet1() {
   let count = 0;
 
   const log = () => console.log("count:", count);
@@ -37,7 +40,7 @@ function createSnippet1() {
 }
 
 // Snippet 2: Closure in a loop
-function createSnippet2() {
+export function createSnippet2() {
   const fns: Array<() => void> = [];
 
   for (var i = 0; i < 3; i++) {
@@ -48,7 +51,7 @@ function createSnippet2() {
 }
 
 // Snippet 3: Closure with let (block scoping)
-function createSnippet3() {
+export function createSnippet3() {
   const fns: Array<() => void> = [];
 
   for (let i = 0; i < 3; i++) {
@@ -58,123 +61,19 @@ function createSnippet3() {
   return fns; // What does each fn() print now?
 }
 
-// Snippet 4: The React connection — setTimeout captures a snapshot
-function createSnippet4SetState(setValue: (v: number) => void) {
+// Snippet 4: The React connection — setTimeout and mutable variables
+export function createSnippet4() {
   let currentValue = 0;
 
-  // Simulates: click handler sets state, then reads it in a timeout
   currentValue = 1;
-  setValue(currentValue);
 
   setTimeout(() => {
-    // This closure captured `currentValue` at creation time
     console.log("after 1s, currentValue:", currentValue);
   }, 1000);
 
-  // But what if someone changes it before the timeout fires?
+  // What if someone changes it before the timeout fires?
   currentValue = 999;
 }
-
-export const ClosuresExercise: FunctionComponent = () => {
-  const [results, setResults] = useState<string[]>([]);
-  const resultsRef = useRef<string[]>([]);
-
-  // Capture console.log output for display
-  const runWithCapture = (label: string, fn: () => void) => {
-    const captured: string[] = [];
-    const origLog = console.log;
-    console.log = (...args: unknown[]) => {
-      captured.push(args.map(String).join(" "));
-      origLog(...args);
-    };
-    try {
-      fn();
-    } finally {
-      console.log = origLog;
-    }
-    resultsRef.current = [...resultsRef.current, `--- ${label} ---`, ...captured];
-    setResults([...resultsRef.current]);
-  };
-
-  // For snippet 4, we need to handle the async timeout
-  const runSnippet4 = () => {
-    const captured: string[] = [];
-    const origLog = console.log;
-    console.log = (...args: unknown[]) => {
-      captured.push(args.map(String).join(" "));
-      origLog(...args);
-    };
-
-    createSnippet4SetState(() => {});
-
-    // Wait for the timeout to fire
-    setTimeout(() => {
-      console.log = origLog;
-      resultsRef.current = [...resultsRef.current, "--- Snippet 4: setTimeout snapshot ---", ...captured];
-      setResults([...resultsRef.current]);
-    }, 1200);
-  };
-
-  return (
-    <div>
-      <h2>A: Closures</h2>
-      <p style={{ color: "#666", fontSize: 14 }}>
-        Predict the output for each snippet, then click "Run" to verify.
-      </p>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <div>
-          <button onClick={() => runWithCapture("Snippet 1: basic capture", () => {
-            const log = createSnippet1();
-            log();
-          })}>
-            Run Snippet 1
-          </button>
-          <p style={{ fontSize: 12, color: "#999" }}>What does log() print?<br/>count was 0 when log was created, then changed to 10.</p>
-        </div>
-
-        <div>
-          <button onClick={() => runWithCapture("Snippet 2: var in loop", () => {
-            const fns = createSnippet2();
-            fns.forEach(fn => fn());
-          })}>
-            Run Snippet 2
-          </button>
-          <p style={{ fontSize: 12, color: "#999" }}>What does each fn() print?<br/>Hint: <code>var</code> is function-scoped.</p>
-        </div>
-
-        <div>
-          <button onClick={() => runWithCapture("Snippet 3: let in loop", () => {
-            const fns = createSnippet3();
-            fns.forEach(fn => fn());
-          })}>
-            Run Snippet 3
-          </button>
-          <p style={{ fontSize: 12, color: "#999" }}>Same loop but with <code>let</code>.<br/>What changes?</p>
-        </div>
-
-        <div>
-          <button onClick={runSnippet4}>
-            Run Snippet 4
-          </button>
-          <p style={{ fontSize: 12, color: "#999" }}>setTimeout fires after 1s.<br/>Does it see 1 or 999?</p>
-        </div>
-      </div>
-
-      <div style={{ background: "#1e1e1e", color: "#d4d4d4", padding: 16, borderRadius: 8, fontFamily: "monospace", fontSize: 13, minHeight: 100, whiteSpace: "pre-wrap" }}>
-        {results.length === 0
-          ? "// Output will appear here..."
-          : results.map((line, i) => (
-              <div key={i} style={{ color: line.startsWith("---") ? "#569cd6" : "#d4d4d4" }}>{line}</div>
-            ))}
-      </div>
-
-      <button onClick={() => { resultsRef.current = []; setResults([]); }} style={{ marginTop: 8 }}>
-        Clear output
-      </button>
-    </div>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Exercise B: Reference Equality — === on objects, arrays, functions
@@ -308,6 +207,14 @@ export const ReferenceEqualityExercise: FunctionComponent = () => {
         as <code>===</code> for our purposes). If you write <code>{"useEffect(() => { ... }, [{ limit: 20 }])"}</code>,
         the object is <strong>new every render</strong> — so the effect runs every render. This is
         why exercises 06 and 07 exist.
+      </div>
+
+      <div style={{ marginTop: 16, padding: 12, background: "#fff7ed", borderRadius: 8, fontSize: 13 }}>
+        <strong>Self-check — can you answer this?</strong>
+        <p style={{ marginTop: 8 }}>
+          Why does <code>{"useEffect(() => fetch(url), [{ page: 1 }])"}</code> run
+          on every render? Which concept from Part A and which from Part B explain it?
+        </p>
       </div>
     </div>
   );

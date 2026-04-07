@@ -1,5 +1,5 @@
 /**
- * Exercise 08: DOM Refs & the Safe Mutation Window — SOLUTIONS
+ * Exercise 07: DOM Refs & the Safe Mutation Window — SOLUTIONS
  * =============================================================
  */
 
@@ -97,14 +97,13 @@ export const FancyInputDemo: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Solution B: ScrollSafeInput with ref callback + cleanup return
 //
-// >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function — just
-// >> like useEffect. Before React 19, the callback was called with `null` on
-// >> unmount (confusing). Now you return a cleanup function (explicit, clear).
-// >> This is the recommended pattern for attaching/detaching event listeners
-// >> via refs.
+// >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function.
+// >> The callback is only called with the node (never null). Detach is
+// >> handled by the returned cleanup. Before React 19, the callback was
+// >> called with null on unmount, which was confusing and error-prone.
 //
-// The ref callback receives the DOM node when attached and returns a cleanup
-// function when detached. No useEffect needed.
+// The ref callback receives the DOM node when attached. Return a cleanup
+// function to run on detach. No useEffect needed, no null check needed.
 // ---------------------------------------------------------------------------
 
 export const ScrollSafeInput: FunctionComponent<{
@@ -112,9 +111,9 @@ export const ScrollSafeInput: FunctionComponent<{
   onChange: (value: number) => void;
 }> = ({ value, onChange }) => {
   // Ref callback with cleanup return (React 19+)
-  const containerRef = useCallback((container: HTMLDivElement | null) => {
-    if (!container) return;
-
+  // In React 19, the callback is only called with the node on attach.
+  // It is never called with null — cleanup is handled by the return function.
+  const containerRef = useCallback((container: HTMLDivElement) => {
     const listener = (event: WheelEvent) => {
       if (container.matches(":focus-within")) {
         event.preventDefault();
@@ -149,8 +148,9 @@ export const ScrollSafeInput: FunctionComponent<{
  *    forwardRef still works but is deprecated. New code should use ref-as-prop.
  *
  * 2. Ref callback cleanup (React 19+): return a cleanup function.
- *    Old: called with null on unmount (had to check if (node === null) return)
- *    New: return () => { cleanup() } — same mental model as useEffect
+ *    Old: called with null on unmount (had to guard with if (!node) return)
+ *    New: callback receives the node (never null), return () => { cleanup() }
+ *    The callback is only called on attach. Detach is handled by the return.
  *
  * 3. useImperativeHandle: expose a custom API, not the raw DOM node.
  *    This is a deliberate API boundary — the parent gets specific methods.

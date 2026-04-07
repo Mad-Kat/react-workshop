@@ -1,5 +1,5 @@
 /**
- * Exercise 11: Suspense with use() — SOLUTIONS
+ * Exercise 10: Suspense with use() — SOLUTIONS
  * ==============================================
  *
  * Key reading:
@@ -150,7 +150,7 @@ const ReviewsList: FunctionComponent = () => {
 // Each section has its own Suspense + ErrorBoundary pair.
 // This matches the LazyLoadQueryBoundary structure in our codebase:
 //
-//   <ClientSideRender>       ← SSR safety (Exercise 15)
+//   <ClientSideRender>       ← SSR safety (Exercise 12)
 //     <ErrorBoundary>        ← catches render errors + rejected promises
 //       <Suspense>           ← catches pending promises (use() suspension)
 //         {children}

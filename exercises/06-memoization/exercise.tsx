@@ -1,5 +1,5 @@
 /**
- * Exercise 07: Memoization Pitfalls
+ * Exercise 06: Memoization Pitfalls
  * ===================================
  *
  * Mental model: Memoization is a performance optimization, not a correctness
@@ -26,19 +26,14 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Part A: Recipe Feed with four memoization problems
+// Part A: Recipe Feed — four memoization problems
 //
-// Problem 1: useMemo on a trivial ternary
-// Problem 2: useMemo with an unstable dependency (function recreated every render)
-// Problem 3: useMemo wrapping Boolean() cast
-// Problem 4: useCallback with a state dependency — consider whether the function
-//            even needs to be memoized, or whether you can restructure to avoid
-//            the dependency entirely.
+// If you get stuck, open guide.md for the three-question checklist.
 // ---------------------------------------------------------------------------
 
 interface Recipe {
@@ -70,8 +65,7 @@ export const RecipeFeed: FunctionComponent<{
 }> = ({ recipes, displayMode, isExpanded }) => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Problem 1: useMemo on a trivial ternary
-  // A single if/else returning a constant — zero computation to cache
+  // Problem 1: Is this useMemo necessary? What does it actually cache?
   const RecipeComponent = useMemo(() => {
     if (displayMode === "card") {
       return CardView;
@@ -80,9 +74,7 @@ export const RecipeFeed: FunctionComponent<{
     }
   }, [displayMode]);
 
-  // Problem 2: useMemo with unstable dependency
-  // `formatDuration` is a plain function recreated every render
-  // so this useMemo re-runs every render — caching nothing
+  // Problem 2: This useMemo isn't caching anything across renders. Why?
   const formatDuration = (minutes: number) =>
     `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 
@@ -95,13 +87,13 @@ export const RecipeFeed: FunctionComponent<{
     [recipes, formatDuration], // formatDuration is new every render!
   );
 
-  // Problem 3: useMemo wrapping Boolean() cast
-  // The most trivial computation possible
+  // Problem 3: Is this computation worth memoizing?
   const isContentExpanded = useMemo(() => Boolean(isExpanded), [isExpanded]);
 
-  // Problem 4: useCallback with a state dependency
-  // The function uses `sortDirection` from state, but consider whether
-  // memoizing it is necessary at all. Can you restructure to avoid it?
+  // Problem 4: This useCallback depends on state, so it changes every
+  // toggle. Can you restructure so no memoization is needed at all?
+  // Hint: if a function doesn't need to close over state, it doesn't
+  // need to live inside the component.
   const sortByDuration = useCallback(
     (a: Recipe, b: Recipe) =>
       sortDirection === "asc"
@@ -156,11 +148,17 @@ interface Item {
 }
 
 // Artificially expensive card — simulates a slow component
-// In real code this could be a card with complex layout or many children
-const ItemCard: FunctionComponent<{
+// React.memo is ALREADY applied — but the cards still re-render every second. Why?
+//
+// Step 1: React.memo does shallow comparison on all props. Run the exercise
+//         and watch the RenderCount badges increment every second.
+// Step 2: If memo is applied, why is it not working? Look at every prop
+//         being passed to ItemCard. Is every prop referentially stable?
+// Step 3: After fixing, watch the RenderCount badges — they should stay at 1.
+const ItemCard = memo<{
   item: Item;
   style?: React.CSSProperties;
-}> = ({ item, style }) => {
+}>(({ item, style }) => {
   const renderCount = useRenderCount();
 
   // Simulate expensive render work
@@ -176,10 +174,9 @@ const ItemCard: FunctionComponent<{
       <RenderCount count={renderCount} />
     </div>
   );
-};
+});
 
-// TODO: Cards re-render every second even though their props haven't changed.
-// Fix this so only truly changed cards re-render.
+ItemCard.displayName = "ItemCard";
 
 const ITEMS: Item[] = [
   { id: "1", name: "Running Shoes", category: "Footwear" },
@@ -219,10 +216,7 @@ export const ItemList: FunctionComponent = () => {
         <ItemCard
           key={item.id}
           item={item}
-          // Problem 5: this inline object is new on every render.
-          // Even after wrapping in React.memo, this card will still re-render
-          // every second because the `style` prop reference changes each time.
-          // Fix: extract this object to a module-level or component-level constant.
+          // Problem 5: memo is applied but cards still re-render. Why?
           style={
             index === 0 ? { border: "1px solid red" } : undefined
           }

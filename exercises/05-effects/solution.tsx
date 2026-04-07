@@ -20,7 +20,7 @@ const trackEvent = (event: string, data: Record<string, unknown>) => {
   console.log(`[Analytics] ${event}`, data);
 };
 
-const subscribeToOccupancyUpdates = (
+const subscribeToLiveRateUpdates = (
   roomId: string,
   callback: (newScore: number) => void,
 ): (() => void) => {
@@ -30,27 +30,31 @@ const subscribeToOccupancyUpdates = (
   return () => clearInterval(interval);
 };
 
-export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
+export const RoomBookingPanel: FunctionComponent<{
+  room: Room;
+  onConfirm?: (data: { roomId: string; guests: number; totalRate: number }) => void;
+}> = ({
   room,
+  onConfirm,
 }) => {
   const renderCount = useRenderCount();
 
   const [guests, setGuests] = useState(1);
-  const [liveScore, setLiveScore] = useState(room.ratePerGuest);
+  const [liveRate, setLiveRate] = useState(room.ratePerGuest);
 
-  // Effect A → DERIVATION: totalRate is computable from liveScore and guests.
+  // Effect A → DERIVATION: totalRate is computable from liveRate and guests.
   // No state, no effect needed. Just compute it inline.
-  const totalRate = liveScore * guests;
+  const totalRate = liveRate * guests;
 
-  // Effect B → EVENT HANDLER: analytics should fire when the user clicks
-  // "Confirm Booking", not when a `confirmed` flag changes. Move it to the
-  // click handler directly.
+  // Effect B → EVENT RESPONSE: the analytics call and the onConfirm callback
+  // are responses to a user action. They belong at the call site (the click
+  // handler), not in an effect watching a boolean flag.
 
   // Effect C → LEGITIMATE EFFECT: synchronizes with an external occupancy
   // score subscription. Correct — keep it.
   useEffect(() => {
-    const unsubscribe = subscribeToOccupancyUpdates(room.id, (newScore) => {
-      setLiveScore(newScore);
+    const unsubscribe = subscribeToLiveRateUpdates(room.id, (newScore) => {
+      setLiveRate(newScore);
     });
     return unsubscribe;
   }, [room.id]);
@@ -67,20 +71,19 @@ export const RoomBookingPanel: FunctionComponent<{ room: Room }> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Analytics moved to the click handler — no intermediate state needed
+  // Everything that should happen on confirm goes in the handler.
+  // The component doesn't need to know whether analytics is wired up
+  // or what the parent does with onConfirm. It just calls them.
   const handleConfirmBooking = () => {
-    trackEvent("booking_confirmed", {
-      roomId: room.id,
-      guests,
-      totalRate,
-    });
-    // ... actual booking confirmation logic
+    const data = { roomId: room.id, guests, totalRate };
+    trackEvent("booking_confirmed", data);
+    onConfirm?.(data);
   };
 
   return (
     <div>
       <h1>Exercise 05 — {room.name}</h1>
-      <p>Rate per guest: ${liveScore}</p>
+      <p>Rate per guest: ${liveRate}</p>
       <p>
         Guests:
         <input

@@ -1,5 +1,5 @@
 /**
- * Exercise 10: Actions & the Action Prop — SOLUTIONS
+ * Exercise 09: Actions & the Action Prop — SOLUTIONS
  * ====================================================
  *
  * Key reading:
@@ -126,9 +126,9 @@ export const TodoListStep1UseTransition: FunctionComponent = () => {
 //     `optimisticTodos` automatically reverts to `todos` — NO manual cleanup
 //   - On success: `setTodos` commits the real item; the optimistic one merges
 //
-// This mirrors what our codebase does in Exercise 02's Solution C:
+// This is the same useOptimistic pattern:
 //   `const [optimisticEnabled, setOptimisticEnabled] = useOptimistic(serverEnabled)`
-//   Instead of `optimisticOverride ?? serverEnabled` with a useEffect.
+//   Replaces the manual `optimisticOverride ?? serverEnabled` pattern.
 // ---------------------------------------------------------------------------
 
 export const TodoListStep2UseOptimistic: FunctionComponent = () => {
@@ -341,7 +341,7 @@ export const LikeButton: FunctionComponent = () => {
  *    Eliminates the manual `optimisticOverride ?? serverValue` pattern.
  *    While the transition is in flight, the optimistic value is shown.
  *    If the action throws, the value snaps back to the server truth.
- *    In our codebase: replaces the pattern from Exercise 02 Solution C.
+ *    Replaces the manual `optimisticOverride ?? serverValue` pattern.
  *
  * 3. Form action prop + useFormStatus
  *    Runs inside a transition automatically. React resets form on success.

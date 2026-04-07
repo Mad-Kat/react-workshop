@@ -4,19 +4,17 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Solution A: FontSizePicker
 //
-// Option 1 (preferred): Remove the local state and effect entirely.
-// The parent owns the font size — use the prop directly for display.
-// For intermediate typing state (before the value is valid), use an
-// uncontrolled input with a ref so we avoid calling onFontSizeChanged
-// on every keystroke.
+// The ONLY change inside FontSizePicker: delete the useEffect.
+// The real fix is in the parent: `key={selectedFontSize}`.
 //
-// Option 2: Use `key={selectedFontSize}` from the parent (ThemeEditor)
-// to remount the picker when the preset changes, giving it fresh state.
+// When the key changes, React unmounts the old FontSizePicker and mounts
+// a new one. useState(fontSize) initializes with the current prop value.
+// No effect needed — no flash.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -26,23 +24,28 @@ interface FontSizePickerProps {
   placeholder: string;
 }
 
-// Option 1: Remove local state and effect, use prop directly
 export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   fontSize,
   onFontSizeChanged,
   placeholder,
 }) => {
-  // For intermediate typing state, use an uncontrolled input with a ref
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [inputValue, setInputValue] = useState<string>(
+    fontSize !== null ? String(fontSize) : "",
+  );
+
+  // No useEffect needed — key trick handles the reset
 
   return (
     <input
-      ref={inputRef}
       type="number"
-      defaultValue={fontSize !== null ? String(fontSize) : ""}
+      value={isFocused ? inputValue : (fontSize !== null ? String(fontSize) : "")}
       placeholder={placeholder}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       onChange={(e) => {
         const raw = e.currentTarget.value;
+        setInputValue(raw);
         const parsed = parseFloat(raw);
         if (!isNaN(parsed) && parsed > 0) {
           onFontSizeChanged(parsed);
@@ -54,7 +57,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   );
 };
 
-// Option 2: Parent uses key to force remount on preset change
+// The fix: key={selectedFontSize} in the parent
 export const ThemeEditor: FunctionComponent = () => {
   const [selectedFontSize, setSelectedFontSize] = useState<number | null>(14);
 
@@ -153,8 +156,38 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
     );
   };
 
-// Parent renders with key:
-// <NotificationSettingsDialog key={JSON.stringify(preferences)} preferences={preferences} ... />
+// The fix: key={JSON.stringify(preferences)} in the parent remounts on change
+export const NotificationSettingsParent: FunctionComponent = () => {
+  const [preferences, setPreferences] = useState<NotificationPreferences>({
+    email: true,
+    push: false,
+    sms: false,
+  });
+  const [isOpen, setIsOpen] = useState(true);
+
+  const simulateExternalUpdate = () => {
+    setPreferences((prev) => ({ ...prev, push: !prev.push }));
+  };
+
+  return (
+    <div>
+      <button onClick={simulateExternalUpdate}>
+        Simulate external update
+      </button>
+      <button onClick={() => setIsOpen(!isOpen)}>
+        {isOpen ? "Close" : "Open"} dialog
+      </button>
+      {isOpen && (
+        <NotificationSettingsDialog
+          key={JSON.stringify(preferences)}
+          preferences={preferences}
+          updatePreferences={setPreferences}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Real codebase references:

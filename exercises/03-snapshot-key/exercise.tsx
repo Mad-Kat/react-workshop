@@ -5,12 +5,9 @@
  * Mental model: Setting state doesn't change the variable — it requests a
  * re-render with a new value. The current render always sees a snapshot.
  *
- * These components use `useEffect(() => setState(...), [prop])` to reset
- * state when props change. Fix them using the `key` trick or by removing
- * the redundant state.
+ * If you get stuck, open guide.md for step-by-step thinking.
  *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes
- *
  */
 
 import type { FunctionComponent } from "react";
@@ -19,11 +16,10 @@ import { useEffect, useState } from "react";
 // ---------------------------------------------------------------------------
 // Exercise A: FontSizePicker
 //
-// When the `fontSize` prop changes (e.g. parent selects a different preset),
-// the effect resets `inputValue`. But there's a flash — the old value
-// renders first, then the effect fires on the next render.
+// Run the exercise. Click "Small" then "Large" — notice the flash?
+// The old value renders briefly before the effect fires.
 //
-// Fix this so the component resets cleanly when `fontSize` changes.
+// Find the bug. Fix it. Then clean up whatever becomes unnecessary.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -103,12 +99,11 @@ export const ThemeEditor: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Exercise B: Notification Preferences Dialog
 //
-// `state` is an editable copy of `preferences` (from context). The effect
-// resets `state` when `preferences` changes externally. But if the dialog is
-// open and the user is editing, the reset silently wipes their changes.
+// This dialog keeps an editable copy of preferences. Click "Simulate
+// external update" while editing — what happens to your changes?
 //
-// Is this effect redundant? Or is it legitimate?
-// What's a better pattern?
+// The local state is legitimate (it's a draft). But the reset mechanism
+// is wrong. Fix it without removing the state.
 // ---------------------------------------------------------------------------
 
 interface NotificationPreferences {
@@ -167,4 +162,38 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
       </div>
     );
   };
+
+// Parent that uses NotificationSettingsDialog
+// Step 3 hint: where should the key go?
+export const NotificationSettingsParent: FunctionComponent = () => {
+  const [preferences, setPreferences] = useState<NotificationPreferences>({
+    email: true,
+    push: false,
+    sms: false,
+  });
+  const [isOpen, setIsOpen] = useState(true);
+
+  // Simulate external preference update
+  const simulateExternalUpdate = () => {
+    setPreferences((prev) => ({ ...prev, push: !prev.push }));
+  };
+
+  return (
+    <div>
+      <button onClick={simulateExternalUpdate}>
+        Simulate external update
+      </button>
+      <button onClick={() => setIsOpen(!isOpen)}>
+        {isOpen ? "Close" : "Open"} dialog
+      </button>
+      {isOpen && (
+        <NotificationSettingsDialog
+          preferences={preferences}
+          updatePreferences={setPreferences}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
+    </div>
+  );
+};
 
