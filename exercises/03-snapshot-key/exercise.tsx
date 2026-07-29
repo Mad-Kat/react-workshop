@@ -12,14 +12,21 @@
 
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Exercise A: FontSizePicker
 //
-// Run the exercise. Click "Small" then "Large" — notice the flash?
-// The old value renders briefly before the effect fires.
+// Run the exercise. Click "Small", then "Large", then "Medium" — and watch the
+// render counter. It goes up by TWO on every click.
+//
+// The component renders once with the OLD value, then the effect fires and
+// renders it again with the new one. The first render is wasted work built on
+// a stale snapshot.
 //
 // Find the bug. Fix it. Then clean up whatever becomes unnecessary.
+// The counter tells you when you've got it.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -34,7 +41,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   onFontSizeChanged,
   placeholder,
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const renderCount = useRenderCount();
   const [inputValue, setInputValue] = useState<string>(
     fontSize !== null ? String(fontSize) : "",
   );
@@ -45,23 +52,24 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   }, [fontSize]);
 
   return (
-    <input
-      type="number"
-      value={isFocused ? inputValue : (fontSize !== null ? String(fontSize) : "")}
-      placeholder={placeholder}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      onChange={(e) => {
-        const raw = e.currentTarget.value;
-        setInputValue(raw);
-        const parsed = parseFloat(raw);
-        if (!isNaN(parsed) && parsed > 0) {
-          onFontSizeChanged(parsed);
-        } else if (raw === "") {
-          onFontSizeChanged(null);
-        }
-      }}
-    />
+    <>
+      <input
+        type="number"
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.currentTarget.value;
+          setInputValue(raw);
+          const parsed = parseFloat(raw);
+          if (!isNaN(parsed) && parsed > 0) {
+            onFontSizeChanged(parsed);
+          } else if (raw === "") {
+            onFontSizeChanged(null);
+          }
+        }}
+      />
+      <RenderCount count={renderCount} />
+    </>
   );
 };
 

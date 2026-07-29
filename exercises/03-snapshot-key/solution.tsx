@@ -5,6 +5,8 @@
 
 import type { FunctionComponent } from "react";
 import { useState } from "react";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
 // Solution A: FontSizePicker
@@ -14,7 +16,11 @@ import { useState } from "react";
 //
 // When the key changes, React unmounts the old FontSizePicker and mounts
 // a new one. useState(fontSize) initializes with the current prop value.
-// No effect needed — no flash.
+// No effect, no second render.
+//
+// The render counter now resets to 1 on every preset click, because the
+// component is a brand new instance. In the exercise version it climbed by
+// two per click and never reset.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -29,7 +35,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   onFontSizeChanged,
   placeholder,
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const renderCount = useRenderCount();
   const [inputValue, setInputValue] = useState<string>(
     fontSize !== null ? String(fontSize) : "",
   );
@@ -37,23 +43,24 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   // No useEffect needed — key trick handles the reset
 
   return (
-    <input
-      type="number"
-      value={isFocused ? inputValue : (fontSize !== null ? String(fontSize) : "")}
-      placeholder={placeholder}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
-      onChange={(e) => {
-        const raw = e.currentTarget.value;
-        setInputValue(raw);
-        const parsed = parseFloat(raw);
-        if (!isNaN(parsed) && parsed > 0) {
-          onFontSizeChanged(parsed);
-        } else if (raw === "") {
-          onFontSizeChanged(null);
-        }
-      }}
-    />
+    <>
+      <input
+        type="number"
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.currentTarget.value;
+          setInputValue(raw);
+          const parsed = parseFloat(raw);
+          if (!isNaN(parsed) && parsed > 0) {
+            onFontSizeChanged(parsed);
+          } else if (raw === "") {
+            onFontSizeChanged(null);
+          }
+        }}
+      />
+      <RenderCount count={renderCount} />
+    </>
   );
 };
 
@@ -197,8 +204,9 @@ export const NotificationSettingsParent: FunctionComponent = () => {
 // Key takeaways:
 //   1. Setting state doesn't mutate the variable — the current render always
 //      sees a snapshot. The new value is only visible in the next render.
-//   2. `useEffect(() => setState(prop), [prop])` causes a double-render (flash)
-//      and is almost always replaceable by `key` or derived state.
+//   2. `useEffect(() => setState(prop), [prop])` causes a double-render — the
+//      first one built on a stale snapshot — and is almost always replaceable
+//      by `key` or derived state.
 //   3. `key` on a component tells React to throw away the old instance and
 //      mount a fresh one. Use it to reset all state at once when a controlling
 //      value changes.

@@ -30,22 +30,24 @@ It takes `fontSize` (a prop) and copies it into `inputValue` (state). Every time
 
 ### Step 2: What happens when you click a preset button?
 
-Try it. Click "Small" then "Large". Watch closely.
+Try it. Click "Small", then "Large", then "Medium". Watch the render counter next to the input.
 
-You should see a flash. The old value appears briefly, then the new value snaps in. Why?
+It goes up by **two** on every click. One click, two renders. Why?
 
-### Step 3: Why does the flash occur?
+### Step 3: Why two renders?
 
 Think about the order of operations:
 
 1. The parent calls `setSelectedFontSize(18)`, which re-renders and passes `fontSize={18}` to `FontSizePicker`
-2. `FontSizePicker` renders. But `inputValue` is still the old value (state hasn't been updated yet)
-3. The browser paints the screen with the old value
-4. *Then* the `useEffect` fires and calls `setInputValue("18")`
-5. A second render happens with the correct value
-6. The browser paints again
+2. `FontSizePicker` renders. But `inputValue` is still the old value — state hasn't been updated yet, and this render sees the old snapshot
+3. *Then* the `useEffect` fires and calls `setInputValue("18")`
+4. A second render happens, this time with the correct value
 
-That's two renders and two paints. The flash is the gap between step 3 and step 6.
+The first render is wasted work. It computed and returned UI based on a value the component already knew was out of date.
+
+> **A note on the "flash."** You will find this anti-pattern described as causing a visible flash of the old value, and on older React versions it did: the browser painted after step 2 and again after step 4. Modern React usually flushes the passive effect before the next paint, so on a small component like this one you typically see no flash at all — just the extra render. Don't go hunting for a flicker that isn't there. The wasted render is the real, measurable problem, and it *does* become visible once the subtree is big enough that the two renders straddle a frame boundary. This is why the counter is a better instrument than your eyes.
+>
+> React Scan shows the same thing: the input lights up twice per click, not once.
 
 ### Step 4: So how can you fix it?
 
@@ -70,11 +72,13 @@ If the key trick handles the reset, the `useEffect` that syncs `fontSize` into `
 
 ### Step 6: Verify
 
-Click the preset buttons again. The flash is gone. The value updates in a single render because `useState` initializes with the correct value on mount. No effect, no second render, no flash.
+Click the preset buttons again and watch the counter. It now reads `renders: 1` after every click, and stays there — because the `key` change mounts a brand new component each time, and `useState` initializes with the correct value on mount. One render, no effect, no stale snapshot.
+
+That reset-to-1 is itself worth noticing: it's direct evidence that you're getting a new component instance rather than an updated one.
 
 ### Why not useLayoutEffect?
 
-You might notice that `useLayoutEffect` would also fix the flash because it runs before the browser paints. And it does work. But it's a band-aid:
+You might notice that `useLayoutEffect` would also remove any paint-visible gap, because it runs before the browser paints. And it does work. But it's a band-aid:
 
 - You still have redundant state that mirrors a prop
 - You still have an extra render cycle (effect fires, calls setState, re-render)
