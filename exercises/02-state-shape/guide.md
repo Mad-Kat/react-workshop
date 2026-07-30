@@ -51,6 +51,10 @@ That's two renders per prop change. The derived version computes `badge` during 
 
 The `setBadge("unknown")` calls during render were even worse. Calling `setState` during render forces React to immediately restart the render before finishing. The derived version eliminates all of this.
 
+### Verify
+
+After the fix, `useState` and `useEffect` are both gone and `badge` is a plain derived expression. Change the props that drive the badge (station offline, missing forecast) and watch the RenderCount badge: it should now increase by one per prop change instead of two, because there is no effect-driven second render.
+
 ---
 
 ## Exercise B: TemperatureReading
@@ -117,7 +121,7 @@ Now `toggleUnit` is a single action that atomically computes the next state from
 
 The bonus: `dispatch` is referentially stable (its identity never changes), which makes it safe to use in dependency arrays without causing re-runs.
 
-### Step 5: Verify
+### Verify
 
 After either fix, `prevUnit` is gone, the `useEffect` is gone, and the RenderCount should decrease. The toggle button click now produces one render instead of two.
 

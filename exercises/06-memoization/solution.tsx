@@ -9,7 +9,7 @@ import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Part A: Recipe Feed
+// A: Recipe Feed (Problems 1–4)
 // ---------------------------------------------------------------------------
 
 interface Recipe {
@@ -88,7 +88,7 @@ export const RecipeFeed: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Part B: ItemCard list with React.memo
+// B: ItemCard list with React.memo (Problems 5–6)
 // ---------------------------------------------------------------------------
 
 interface Item {

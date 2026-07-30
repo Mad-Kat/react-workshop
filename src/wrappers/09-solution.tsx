@@ -3,16 +3,16 @@ import { TodoListStep1UseTransition, TodoListStep2UseOptimistic, TodoListStep3Fo
 export default function Wrapper() {
   return (
     <>
-      <h2>Step 1: useTransition</h2>
+      <h2>B — Step 1: useTransition</h2>
       <TodoListStep1UseTransition />
       <hr style={{ margin: "24px 0" }} />
-      <h2>Step 2: useOptimistic</h2>
+      <h2>B — Step 2: useOptimistic</h2>
       <TodoListStep2UseOptimistic />
       <hr style={{ margin: "24px 0" }} />
-      <h2>Step 3: Form Action</h2>
+      <h2>B — Step 3: Form Action</h2>
       <TodoListStep3FormAction />
       <hr style={{ margin: "24px 0" }} />
-      <h2>Step 4: useActionState (LikeButton)</h2>
+      <h2>C: useActionState (LikeButton)</h2>
       <LikeButton />
     </>
   );

@@ -31,7 +31,7 @@ import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Part A: Recipe Feed — four memoization problems
+// A: Recipe Feed — four memoization problems (Problems 1–4)
 //
 // If you get stuck, open guide.md for the three-question checklist.
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export const RecipeFeed: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Part B: ItemCard list — Problems 5 & 6
+// B: ItemCard list — Problems 5 & 6
 //
 // Problem 5: React.memo trap — an inline object prop breaks memoization
 //

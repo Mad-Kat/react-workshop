@@ -14,7 +14,7 @@ Keep this distinction in mind as you work through both exercises.
 
 ### Step 1: What does this component actually do?
 
-Read the component and understand its purpose before looking for bugs. `FontSizePicker` receives a `fontSize` prop from the parent. But the user can also type a custom value into the input. That means the component needs local state (`inputValue`) to hold what the user is typing, independently from what the parent says. The `isFocused` state tracks whether the user is currently typing.
+Read the component and understand its purpose before looking for bugs. `FontSizePicker` receives a `fontSize` prop from the parent. But the user can also type a custom value into the input. That means the component needs local state (`inputValue`) to hold what the user is typing, independently from what the parent says.
 
 This is different from Exercise 02. In that exercise the state was just a mirror of a prop. Here the state has a real job: it holds the user's in-progress edit.
 
@@ -28,13 +28,13 @@ useEffect(() => {
 
 It takes `fontSize` (a prop) and copies it into `inputValue` (state). Every time the prop changes, the effect "syncs" state to match.
 
-### Step 2: What happens when you click a preset button?
+### Step 3: What happens when you click a preset button?
 
 Try it. Click "Small", then "Large", then "Medium". Watch the render counter next to the input.
 
 It goes up by **two** on every click. One click, two renders. Why?
 
-### Step 3: Why two renders?
+### Step 4: Why two renders?
 
 Think about the order of operations:
 
@@ -49,7 +49,7 @@ The first render is wasted work. It computed and returned UI based on a value th
 >
 > React Scan shows the same thing: the input lights up twice per click, not once.
 
-### Step 4: So how can you fix it?
+### Step 5: So how can you fix it?
 
 The real question is: why does `FontSizePicker` need to "sync" its state to the prop at all? It already receives `fontSize` as a prop. The state exists so the component can hold a draft value while the user is typing. But when the prop changes from the outside (preset button click), you want a fresh start.
 
@@ -66,11 +66,11 @@ Look at the parent, `ThemeEditor`. What if you could tell React to throw away th
 
 Adding `key={selectedFontSize}` does exactly that. When the key changes, React **unmounts** the old component and **mounts** a new one. The new instance calls `useState(fontSize)` with the current prop. Fresh state, no effect needed.
 
-### Step 5: Now what can you clean up?
+### Step 6: Now what can you clean up?
 
 If the key trick handles the reset, the `useEffect` that syncs `fontSize` into `inputValue` is unnecessary. Delete it.
 
-### Step 6: Verify
+### Verify
 
 Click the preset buttons again and watch the counter. It now reads `renders: 1` after every click, and stays there — because the `key` change mounts a brand new component each time, and `useState` initializes with the correct value on mount. One render, no effect, no stale snapshot.
 
@@ -108,17 +108,17 @@ useEffect(() => {
 
 The effect resets the local draft whenever the source `preferences` changes externally. The intent is "if the underlying data changes, update the draft to match."
 
-### Step 2: What happens when preferences changes externally while you're editing?
+### Step 3: What happens when preferences changes externally while you're editing?
 
 Try it. Toggle some checkboxes in the dialog. Then click "Simulate external update".
 
 Your in-progress edits disappear. The effect fires, calls `setState(preferences)`, and silently wipes everything you were doing.
 
-### Step 3: Why does that happen?
+### Step 4: Why does that happen?
 
 The `useEffect` watches `preferences`. When the external update changes `preferences`, the effect fires and resets local state to match. It doesn't know or care that the user was in the middle of editing.
 
-### Step 4: How can you fix this without removing the state?
+### Step 5: How can you fix this without removing the state?
 
 The state is legitimate. The problem is the reset mechanism. Same insight as Exercise A: instead of syncing state with an effect, let React handle it by remounting.
 
@@ -135,13 +135,13 @@ Look at the parent, `NotificationSettingsParent`. Add a `key` that changes when 
 
 When preferences changes externally, the key changes, React unmounts the old dialog and mounts a fresh one. `useState(preferences)` initializes with the updated preferences. Clean slate.
 
-### Step 5: Why does that fix work?
+### Step 6: Why does that fix work?
 
 The dialog only opens on user action, so remounting is safe. The new instance gets a fresh copy of the latest preferences via `useState(preferences)`. No effect needed to keep things in sync.
 
 Now delete the `useEffect` from the dialog. It's no longer needed.
 
-### Step 6: Verify
+### Verify
 
 Toggle some checkboxes. Click "Simulate external update". The dialog remounts with the updated preferences. No silent wipe of in-progress edits (the edits are gone, but so is the old dialog instance). The user sees a clean dialog reflecting the current state, which is the correct behavior when the underlying data changes.
 

@@ -56,7 +56,7 @@ const fetchReviews = async (): Promise<ReviewData[]> => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise Part 1: Manual Loading States (the "before" version)
+// Exercise A: Manual Loading States (the "before" version)
 //
 // This component manages its own loading/error/data states manually.
 // It works, but the logic is tangled with the UI, and both sections
@@ -142,7 +142,7 @@ export const ProductPageManual: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise Part 2: Build the Suspense + use() version
+// Exercise B: Build the Suspense + use() version
 //
 // Goal: replace 6 state variables with 0. Let React manage loading states.
 //

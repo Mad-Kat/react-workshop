@@ -56,7 +56,7 @@ useEffect(() => {
 
 Each effect invocation creates its own `ignore` variable via **closure** (Exercise 01). The cleanup sets *that specific* `ignore` to true, so the corresponding `.then()` checks *its own* `ignore`. They don't share a single flag; each render cycle has its own.
 
-### Step 5: Verify
+### Verify
 
 Type "shoes" quickly. The results should no longer flicker. Only the final result for "shoes" appears. The `isLoading` state should also be correct: loading while the current query is in flight, not loading when it resolves.
 
@@ -100,6 +100,10 @@ When you call `controller.abort()`, the promise rejects with a `DOMException` na
 ### Edge case: empty query
 
 Both approaches need the same early return for empty queries. Return `[]` without fetching, and reset `isLoading` to false.
+
+### Verify
+
+Type "shoes" quickly again. The results should settle on the final query with no flicker, and no error should surface in the UI or console — the `AbortError` from each cancelled request is caught and ignored. (The search API here is simulated, so nothing shows up in the Network tab; with a real `fetch`, you would see the superseded requests marked as cancelled there.) Clearing the input should immediately show empty results with no loading state.
 
 ---
 

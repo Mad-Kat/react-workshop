@@ -6,7 +6,7 @@ This exercise builds the two foundational concepts that explain ~80% of React's 
 
 ---
 
-## Part A: Closures
+## Exercise A: Closures
 
 ### Start by looking at Snippet 1
 
@@ -142,7 +142,7 @@ The snippets above demonstrate one principle: **a closure sees whatever the bind
 
 ---
 
-## Part B: Reference Equality
+## Exercise B: Reference Equality
 
 ### Start with Comparisons 1 and 2
 

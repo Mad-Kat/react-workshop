@@ -27,7 +27,7 @@ No codebase source — this is a foundational mental model exercise.
 | Exercise | Anti-Pattern | Original File |
 |----------|-------------|---------------|
 | A — Weather Status Badge | State mirroring prop via effect, setState during render | `libraries/product-availability/src/availabilityLegacy.tsx` (lines 160–161, 181–199) |
-| B — Notification Preference | State mirroring Relay data, optimistic update → `useOptimistic` | `libraries/product-updates-notifications/src/productDetailPage/useSubscribeToPriceChange.tsx` (lines 54–78) |
+| B — Temperature Reading | Redundant `prevUnit` state used by an effect to detect a unit change; conversion logic split between the click handler and the effect. Fix: update `unit` and `temperature` atomically in the event handler (or centralize the transition with `useReducer`) | Generic pattern — derived from the temperature/unit-toggle display pattern (no single source file) |
 
 **Note:** Exercise includes `useRenderCount()` — participants can see the render count drop when they remove the effect and derive inline.
 
@@ -68,7 +68,7 @@ Also referenced:
 | C — occupancy subscription | Legitimate effect | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (lines 103–119) |
 | D — keyboard shortcut | Legitimate effect | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (lines 121–135) |
 
-**Note:** Exercise includes `useRenderCount()` + fetch counter. The old Exercise 06 (Events vs Effects) was removed as redundant — Effect B here already teaches "this should be in an event handler." For advanced teams, mention the `pendingVariablesRef` pattern from `domains/spending/src/spending.tsx` during discussion.
+**Note:** Exercise includes `useRenderCount()` + fetch counter. The exercise now includes a `useEffectEvent` part (Effect C: the subscription callback must read the latest guest count without re-subscribing; visible via the "Subscriptions started" badge). The old Exercise 06 (Events vs Effects) was removed as redundant — Effect B here already teaches "this should be in an event handler." For advanced teams, mention the `pendingVariablesRef` pattern from `domains/spending/src/spending.tsx` during discussion.
 
 ---
 
@@ -82,7 +82,7 @@ Also referenced:
 | Problem 4 — useCallback with state dep | useCallback that can be restructured to avoid the dependency | `domains/product-detail/src/blocks/lib/expandableContentWrapper.tsx` (lines 69–101) |
 | Problem 5 — React.memo with unstable props | React.memo defeated by inline object prop | Generic pattern (common in component libraries) |
 
-**Note:** Problem 5 (Part B) includes `useRenderCount()` on each `ItemCard`. Exercise: all 4 card counters increment every second. Solution: card counters stay at 1. This is the most visually dramatic exercise.
+**Note:** Problem 5 includes `useRenderCount()` on each `ItemCard`. Exercise: all 4 card counters increment every second. Solution: card counters stay at 1. This is the most visually dramatic exercise.
 
 ---
 
@@ -159,6 +159,6 @@ Also referenced:
 - `blocks/client-side-render/src/useIsHydrated.ts` — useIsHydrated pattern
 - `segments/relay/src/data/lazyLoadQueryBoundary.tsx` — forceLoadingFallback prop
 
-**Note:** Trimmed from 4 sub-exercises to 2. Post (Date.now mismatch) and AdaptiveCard (matchMedia) removed — they're variants of the same patterns. SSR issues can't be visually tested client-side; the exercise is conceptual.
+**Note:** Trimmed from 4 sub-exercises to 2. Post (Date.now mismatch) and AdaptiveCard (matchMedia) removed — they're variants of the same patterns. The exercise now runs in a fake-SSR simulator (`renderToString` in a Web Worker, followed by client hydration), so all three bugs are observable live in the browser.
 
 **Discussion topics:** React Server Components, Streaming SSR, `<ViewTransition>` component.

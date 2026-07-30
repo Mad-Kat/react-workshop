@@ -102,14 +102,14 @@ const RecommendationsSection: FunctionComponent<{ shouldFail?: boolean }> = ({ s
 //
 // Currently, if ANY section throws, the whole page crashes.
 //
-// Part 1: Isolate failures
+// Exercise A: Isolate failures
 //   Each section has different criticality. The product info is essential,
 //   reviews are nice-to-have, recommendations are optional.
 //   Wrap each section in its own ErrorBoundary with an appropriate fallback.
 //   (Read the ErrorBoundary class above — especially the fallback prop type.)
 //   Test with the failure toggles to verify isolation works.
 //
-// Part 2: Discover what boundaries DON'T catch
+// Exercise B: Discover what boundaries DON'T catch
 //   Uncomment BrokenButton below. Wrap it in an ErrorBoundary.
 //   Click it. Does the boundary catch the error? Why not?
 // ---------------------------------------------------------------------------
@@ -154,9 +154,9 @@ export const ProductDetailPage: FunctionComponent = () => {
 void ErrorBoundary;
 
 // ---------------------------------------------------------------------------
-// Part 2: What Boundaries DON'T Catch
+// Exercise B: What Boundaries DON'T Catch
 //
-// Step 5: Uncomment this component. Wrap it in an ErrorBoundary.
+// Uncomment this component. Wrap it in an ErrorBoundary.
 // Click the button. Does the boundary catch the error?
 //
 // Error boundaries catch errors during RENDERING (the return statement).

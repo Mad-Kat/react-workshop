@@ -2,11 +2,11 @@
 
 ### Start by reading the RecipeFeed component
 
-You see four hooks that look like performance optimizations: a `useMemo`, another `useMemo`, yet another `useMemo`, and a `useCallback`. Then in Part B, a `React.memo` wrapper and a search filter. Let's examine each one and ask: is this memo actually doing anything useful?
+You see four hooks that look like performance optimizations: a `useMemo`, another `useMemo`, yet another `useMemo`, and a `useCallback`. Then in Problems 5 and 6, a `React.memo` wrapper and a search filter. Let's examine each one and ask: is this memo actually doing anything useful?
 
 ---
 
-### Problem 1: The useMemo on a ternary
+## Problem 1: The useMemo on a ternary
 
 ```tsx
 const RecipeComponent = useMemo(() => {
@@ -36,7 +36,7 @@ const RecipeComponent = displayMode === "card" ? CardView : RowView;
 
 ---
 
-### Problem 2: The useMemo with formatDuration
+## Problem 2: The useMemo with formatDuration
 
 ```tsx
 const formatDuration = (minutes: number) =>
@@ -51,15 +51,15 @@ const annotatedRecipes = useMemo(
 );
 ```
 
-### Step 4: Are all the dependencies stable across renders?
+### Step 1: Are all the dependencies stable across renders?
 
 Look at the dependency array: `[recipes, formatDuration]`. Where is `formatDuration` defined? Inside the component body, as a plain function declaration. That means it is recreated on every render. Every render produces a new function reference, so `formatDuration` is never the same between renders.
 
-### Step 5: So what does useMemo actually cache here?
+### Step 2: So what does useMemo actually cache here?
 
 Nothing. Since one of its dependencies changes every render, the memo recomputes every render. It is paying the overhead of dependency comparison while caching nothing.
 
-### Step 6: What is the fix?
+### Step 3: What is the fix?
 
 Two options. First, `formatDuration` does not read any props or state, so move it to module scope. It becomes a stable reference for free:
 
@@ -80,17 +80,17 @@ const annotatedRecipes = recipes.map((r) => ({
 
 ---
 
-### Problem 3: The useMemo on Boolean()
+## Problem 3: The useMemo on Boolean()
 
 ```tsx
 const isContentExpanded = useMemo(() => Boolean(isExpanded), [isExpanded]);
 ```
 
-### Step 7: Is this computation expensive?
+### Step 1: Is this computation expensive?
 
 `Boolean(isExpanded)` is a type cast. It is one of the cheapest operations JavaScript can perform. The `useMemo` wrapper costs more than the computation itself.
 
-### Step 8: What is the fix?
+### Step 2: What is the fix?
 
 Remove the `useMemo`:
 
@@ -102,7 +102,7 @@ Rule of thumb: if the computation takes less than roughly 1ms, memoizing it adds
 
 ---
 
-### Problem 4: The useCallback with a state dependency
+## Problem 4: The useCallback with a state dependency
 
 ```tsx
 const sortByDuration = useCallback(
@@ -114,11 +114,11 @@ const sortByDuration = useCallback(
 );
 ```
 
-### Step 9: What happens when sortDirection changes?
+### Step 1: What happens when sortDirection changes?
 
 The dependency `[sortDirection]` changes, so `useCallback` returns a new function. Every time the user toggles the sort direction, the memoized function is discarded and recreated. The `useCallback` only caches the function between direction changes, which is a narrow window.
 
-### Step 10: Does this function need to close over state at all?
+### Step 2: Does this function need to close over state at all?
 
 Look at what it does: it picks between ascending and descending comparison. Those two comparison functions are pure. They do not depend on any component state. They could live at module scope:
 
@@ -135,11 +135,11 @@ No `useCallback`, no dependency array. A plain ternary selects between two stabl
 
 ---
 
-### Problem 5: React.memo on ItemCard
+## Problem 5: React.memo on ItemCard
 
 The parent re-renders every second (a timer increments `tick`). `ItemCard` is wrapped in `React.memo`. Yet the render counts on the cards still increment every second.
 
-### Step 11: If memo is applied, why is it not working?
+### Step 1: If memo is applied, why is it not working?
 
 `React.memo` does shallow comparison on all props. If every prop is referentially identical between renders, memo skips the re-render. So at least one prop must be changing. Look at the JSX:
 
@@ -151,11 +151,11 @@ The parent re-renders every second (a timer increments `tick`). `ItemCard` is wr
 />
 ```
 
-### Step 12: Which prop is unstable?
+### Step 2: Which prop is unstable?
 
 `item` comes from the `ITEMS` array defined at module scope. That is stable. But `{ border: "1px solid red" }` is an inline object literal. Every render creates a new object. Even though the contents are identical, the reference is different. `React.memo`'s shallow comparison sees a "new" `style` prop and re-renders.
 
-### Step 13: What is the fix?
+### Step 3: What is the fix?
 
 Extract the style object to module scope so it is the same reference every render:
 
@@ -174,15 +174,15 @@ After fixing, watch the RenderCount badges. They should stay at 1 even as the ti
 
 ---
 
-### Problem 6: Input lag from synchronous filtering
+## Problem 6: Input lag from synchronous filtering
 
 Type in the search box. Every keystroke triggers a synchronous re-render of all `ItemCard` components. Since each card has an artificial 8ms busy wait, the input feels sluggish.
 
-### Step 14: What is happening on each keystroke?
+### Step 1: What is happening on each keystroke?
 
 The `search` state updates, the component re-renders, the filter runs, and all matching `ItemCard` components render synchronously before the browser can update the input. The input feels frozen until the expensive render finishes.
 
-### Step 15: How do you keep the input responsive while the list catches up?
+### Step 2: How do you keep the input responsive while the list catches up?
 
 Wrap the search value in `useDeferredValue`:
 
@@ -211,13 +211,13 @@ The trade off: `useDeferredValue` is applied at the consumer (the filtering code
 
 ---
 
-### Verify
+## Verify
 
 After fixing all six problems, notice the pattern. For each memo, the same questions surfaced: Is the computation expensive? Are the dependencies stable? Can I restructure to avoid memoization entirely? Most of the time the answer was "remove it" or "move the function out of the component."
 
 ---
 
-### "So when IS memoization the right call?"
+## "So when IS memoization the right call?"
 
 This exercise only showed cases where memoization was wrong. That might leave you thinking you should never use it. But there are real cases where `useMemo` earns its place.
 
@@ -246,6 +246,8 @@ const filters = useMemo(
 
 Now `filters` keeps the same reference as long as `category` and `sortBy` don't change. `React.memo` on children works. Effects with `filters` in deps only re-run when the values actually change.
 
+> **Caveat:** `useMemo` is a performance hint, not a guarantee. React may discard memoized values and recompute them (for example, to free memory). That is fine for optimizations like the one above, but if your logic *requires* an identity that stays stable across renders, `useRef` is the correct tool.
+
 **The same applies to arrays and callbacks:**
 
 - `useMemo` for an array built from props/state that gets passed to a memoized child
@@ -255,7 +257,7 @@ Now `filters` keeps the same reference as long as `category` and `sortBy` don't 
 
 ---
 
-### "What about useCallback when the function depends on a prop callback?"
+## "What about useCallback when the function depends on a prop callback?"
 
 This is a harder case. Imagine a component that receives an `onChange` callback from the parent and uses it in an effect:
 
@@ -309,9 +311,9 @@ function SearchInput({ onChange }) {
 
 The ref always holds the latest callback, so the effect always calls the right function. But the effect's dependency array doesn't include `onChange`, which means the linter will complain and the connection between the prop and the effect is invisible. You're telling React "this doesn't depend on onChange" when it actually does. It works, but it's a lie to the dependency array.
 
-**Option 3: useEffectEvent (React 19+).**
+**Option 3: useEffectEvent.**
 
-`useEffectEvent` is designed for exactly this case. It creates a stable function that always reads the latest props/state without appearing in the dependency array:
+`useEffectEvent` is stable as of React 19.2 (the version this repo uses) and is imported directly from `"react"`. You already used it hands-on in Exercise 05 (Effect C: the subscription that must see the latest guest count without re-subscribing). It is designed for exactly this case: it creates a stable function that always reads the latest props/state without appearing in the dependency array:
 
 ```tsx
 function SearchInput({ onChange }) {
@@ -341,7 +343,7 @@ function SearchInput({ onChange }) {
 | Internal ref | The component | Dependency array lie. Linter warning. Hidden connection. |
 | `useEffectEvent` | React | Only works inside effects. Cannot stabilize callbacks passed as props. |
 
-For effects that depend on a prop callback, `useEffectEvent` is the cleanest solution in React 19. For callbacks that need to be stable as props (e.g., passed to a `React.memo`'d child), the ref approach is the most common pattern in production codebases. It's a pragmatic trade-off. Be aware of what you're doing: you're decoupling the effect from a value it actually depends on. Document it clearly so future readers understand why the ref exists.
+For effects that depend on a prop callback, `useEffectEvent` is the cleanest solution in React 19.2. For callbacks that need to be stable as props (e.g., passed to a `React.memo`'d child), the ref approach is the most common pattern in production codebases. It's a pragmatic trade-off. Be aware of what you're doing: you're decoupling the effect from a value it actually depends on. Document it clearly so future readers understand why the ref exists.
 
 ## Key reading
 

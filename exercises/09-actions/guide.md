@@ -16,7 +16,15 @@ Three of the five `useState` calls have nothing to do with the domain (todos and
 
 And then look at the cleanup. `setOptimisticTodo(null)` appears in both the success path and the error path. `setIsPending(false)` lives in `finally`. `setInputValue(text)` restores the input on failure. That's a lot of ceremony for "add an item to a list."
 
-### Step 2: What if you could eliminate isPending?
+### Verify
+
+Before moving on, you should be able to point at the three pieces of async-lifecycle ceremony in `TodoListManual`: the pending flag, the error state, and the two-path optimistic cleanup. Exercise B removes all three.
+
+---
+
+## Exercise B: Refactor to actions
+
+### Step 1: What if you could eliminate isPending?
 
 That's what `useTransition` does:
 
@@ -26,7 +34,7 @@ const [isPending, startTransition] = useTransition();
 
 Wrap the async work in `startTransition(async () => { ... })`. React tracks pending state for you. No `setIsPending(true)` at the top, no `finally { setIsPending(false) }` at the bottom. One hook replaces three lines of boilerplate and the risk of forgetting the `finally`.
 
-### Step 3: Ok, but what about the optimistic item?
+### Step 2: Ok, but what about the optimistic item?
 
 The manual version creates a fake todo with `id: "optimistic"`, adds it to the display list, then removes it on success or failure. Two cleanup paths.
 
@@ -43,7 +51,7 @@ Call `addOptimisticTodo(newItem)` inside the transition. The optimistic value is
 
 The revert happens because the transition ends, not because an exception propagates. If the action succeeds and updates `todos`, the optimistic item is replaced by the real item. If the action fails without updating `todos`, the optimistic item disappears.
 
-### Step 4: What about the form ceremony?
+### Step 3: What about the form ceremony?
 
 The manual version has `e.preventDefault()`, a controlled input with `onChange`, and manual clearing of the input after submission. What if the form could handle its own lifecycle?
 
@@ -60,7 +68,7 @@ When the `action` prop is a function, React does several things for you:
 
 **Bonus:** extract a `SubmitButton` that uses `useFormStatus()` from `react-dom` to read pending state without prop drilling.
 
-### Step 5: Verify
+### Verify
 
 The action version should behave identically to the manual version: optimistic item appears instantly at half opacity, disappears on error, gets replaced by the real item on success. But count the `useState` calls now. The async lifecycle state is gone.
 
@@ -95,7 +103,7 @@ No stale closures. No race conditions.
 3. Use `dispatch` as the form `action` (or call it from a button click)
 4. Disable the button while `isPending`, show the current count
 
-### Step 4: Verify
+### Verify
 
 Click "Like" three times quickly. The count should go from 42 to 45. Each click is queued and processed in order.
 

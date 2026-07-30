@@ -213,7 +213,7 @@ export const ReferenceEqualityExercise: FunctionComponent = () => {
         <strong>Self-check — can you answer this?</strong>
         <p style={{ marginTop: 8 }}>
           Why does <code>{"useEffect(() => fetch(url), [{ page: 1 }])"}</code> run
-          on every render? Which concept from Part A and which from Part B explain it?
+          on every render? Which concept from Exercise A and which from Exercise B explain it?
         </p>
       </div>
     </div>
