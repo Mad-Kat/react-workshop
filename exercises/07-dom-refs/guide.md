@@ -95,40 +95,33 @@ Wire up the Focus and Clear buttons to `fancyInputRef.current?.focus()` and `fan
 
 ## Exercise B: Ref callback with cleanup
 
-### Start by reading the current ScrollSafeInput code
+### Step 1: Reproduce the bug first
 
-You see a `useRef` paired with a `useEffect`:
+Click "Show advanced settings", focus the number input, and scroll over it. **The value changes.** The wheel listener that should prevent this was never attached.
+
+### Step 2: Trace why the listener is missing
+
+The code pairs a `useRef` with a `useEffect`:
 
 ```tsx
 const containerRef = useRef<HTMLDivElement>(null);
 
 useEffect(() => {
   const container = containerRef.current;
-  if (!container) return;
+  if (!container) return;   // ← the effect bails out here
 
-  const listener = (event: WheelEvent) => {
-    if (container.matches(":focus-within")) {
-      event.preventDefault();
-    }
-  };
-
-  container.addEventListener("wheel", listener, { passive: false });
-  return () => container.removeEventListener("wheel", listener);
+  // ...attach wheel listener...
 }, []);
 ```
 
-### Step 7: What is the problem with this approach?
+The effect runs once, on mount — while the panel is still collapsed. The `<div ref={containerRef}>` doesn't exist yet, so `containerRef.current` is `null` and the effect returns early. When you later expand the panel, the div appears in the DOM — but nothing re-runs the effect. The ref and the effect are decoupled: the effect's timing is tied to the component's lifecycle, not to the node's.
 
-The effect runs on mount. It reads `containerRef.current` and, if the node exists, attaches the listener. But the ref and the effect are decoupled. If the DOM node is not attached when the effect runs (for example, if the component is conditionally rendered and the condition is initially false), `containerRef.current` is `null` and the listener is never attached. There is no mechanism to retry when the node finally appears.
+### Step 3: What if you could attach the listener at the exact moment the node appears in the DOM?
 
-### Step 8: What if you could attach the listener at the exact moment the node appears in the DOM?
-
-That is what a ref callback does. Instead of passing a ref object, you pass a function. React calls that function with the DOM node when it attaches.
-
-In React 19, the callback is only ever called with the actual node. It is never called with `null`. Detach is handled by returning a cleanup function (same pattern as `useEffect`):
+That is what a ref callback does. Instead of passing a ref object, you pass a function. React calls that function with the DOM node when it attaches — whenever that happens, mount or later:
 
 ```tsx
-const containerRef = useCallback((node: HTMLDivElement) => {
+const attachContainer = useCallback((node: HTMLDivElement) => {
   const listener = (e: WheelEvent) => {
     if (node.matches(":focus-within")) {
       e.preventDefault();
@@ -141,15 +134,17 @@ const containerRef = useCallback((node: HTMLDivElement) => {
 }, []);
 ```
 
-No `useEffect`. No timing gap. No null check. The listener is attached the instant React puts the node in the DOM. When React detaches the node, it calls the returned cleanup function.
+No `useEffect`. No timing gap. No null check. The listener is attached the instant React puts the node in the DOM. When React detaches the node (collapse the panel), it calls the returned cleanup function.
 
-### Step 9: Why is useCallback important here?
+In React 19, when the callback returns a cleanup function, React uses that for detach and never calls the callback with `null`. (Callbacks that don't return a cleanup still get the legacy call-with-`null` on detach, for backwards compatibility.)
+
+### Step 4: Why is useCallback important here?
 
 Without `useCallback`, the callback function is recreated on every render. React sees a new function reference and calls the old cleanup, then calls the new callback. That means the listener is detached and reattached on every render. Wrapping it in `useCallback` with `[]` deps ensures the function is stable and React only calls it when the node actually attaches or detaches.
 
 ### Verify
 
-Replace the `useRef` + `useEffect` with the ref callback pattern. Pass `containerRef` as the `ref` prop on the `<div>`. Confirm that scrolling over the number input while it is focused does not change the value, and that the listener is properly cleaned up when the component unmounts.
+Replace the `useRef` + `useEffect` with the ref callback pattern and pass `attachContainer` as the `ref` prop on the conditional `<div>`. Expand the panel, focus the input, scroll — the value must no longer change. Collapse and re-expand the panel to confirm attach/cleanup keep working across toggles.
 
 ## Key reading
 

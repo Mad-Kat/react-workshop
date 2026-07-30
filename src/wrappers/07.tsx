@@ -8,7 +8,10 @@ export default function Wrapper() {
       <h2>A: Fancy Input</h2>
       <FancyInputDemo />
       <h2>B: Scroll-Safe Input</h2>
-      <p>Try scrolling on the number input while it's focused:</p>
+      <p>
+        Expand the advanced settings, focus the number input, then scroll over
+        it. The value must NOT change. Current value: <strong>{val}</strong>
+      </p>
       <ScrollSafeInput value={val} onChange={setVal} />
     </>
   );

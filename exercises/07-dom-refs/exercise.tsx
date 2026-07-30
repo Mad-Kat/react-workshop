@@ -75,24 +75,37 @@ export const FancyInputDemo: FunctionComponent = () => {
 // Exercise B: Ref callback with cleanup function
 //
 // >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function.
-// >> The callback is only called with the node (never null). Detach is
-// >> handled by the returned cleanup function. Before React 19, the
-// >> callback was called with null on detach, which was confusing.
+// >> When a cleanup function is returned, React no longer calls the
+// >> callback with null on detach — cleanup handles it instead.
 //
-// A number input that should prevent scroll-to-change behavior.
-// Currently uses useRef + useEffect — refactor to use a ref callback
-// that returns a cleanup function (React 19+).
+// A number input inside a collapsed-by-default "advanced settings" panel.
+// Scrolling over a focused number input changes its value — we want to
+// prevent that with a non-passive wheel listener.
+//
+// REPRODUCE THE BUG FIRST:
+//   1. Click "Show advanced settings"
+//   2. Focus the number input
+//   3. Scroll over it — the value changes! The listener was never attached.
+//
+// Why: the effect ran once on mount, while the panel was still collapsed.
+// containerRef.current was null, so the effect bailed out. Nothing re-runs
+// it when the panel finally renders the div.
+//
+// TODO: Refactor to a ref callback that returns a cleanup function.
+//   The callback runs at the exact moment the node appears in the DOM —
+//   no matter when that is. No timing gap, no null check, no useEffect.
 // ---------------------------------------------------------------------------
 
 export const ScrollSafeInput: FunctionComponent<{
   value: number;
   onChange: (value: number) => void;
 }> = ({ value, onChange }) => {
+  const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Current approach: useRef + useEffect
-  // Problem: the effect runs on mount, but if the ref isn't attached yet
-  // (e.g., conditional rendering), the listener is never attached.
+  // Broken approach: useRef + useEffect.
+  // The effect runs once on mount — while the panel is collapsed and the
+  // div doesn't exist. The listener is never attached.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -108,14 +121,22 @@ export const ScrollSafeInput: FunctionComponent<{
   }, []);
 
   return (
-    <div ref={containerRef}>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+    <div>
+      <button onClick={() => setExpanded((e) => !e)}>
+        {expanded ? "Hide" : "Show"} advanced settings
+      </button>
+      {expanded && (
+        <div ref={containerRef} style={{ marginTop: 8 }}>
+          <label>
+            Max price:{" "}
+            <input
+              type="number"
+              value={value}
+              onChange={(e) => onChange(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 };
-
-// TODO: Refactor ScrollSafeInput to use a ref callback that returns a cleanup function

@@ -98,9 +98,10 @@ export const FancyInputDemo: FunctionComponent = () => {
 // Solution B: ScrollSafeInput with ref callback + cleanup return
 //
 // >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function.
-// >> The callback is only called with the node (never null). Detach is
-// >> handled by the returned cleanup. Before React 19, the callback was
-// >> called with null on unmount, which was confusing and error-prone.
+// >> When a cleanup function is returned, React skips the legacy
+// >> "call with null on detach" behavior — cleanup handles it instead.
+// >> (Callbacks that DON'T return a cleanup still get called with null,
+// >> for backwards compatibility.)
 //
 // The ref callback receives the DOM node when attached. Return a cleanup
 // function to run on detach. No useEffect needed, no null check needed.
@@ -110,10 +111,13 @@ export const ScrollSafeInput: FunctionComponent<{
   value: number;
   onChange: (value: number) => void;
 }> = ({ value, onChange }) => {
-  // Ref callback with cleanup return (React 19+)
-  // In React 19, the callback is only called with the node on attach.
-  // It is never called with null — cleanup is handled by the return function.
-  const containerRef = useCallback((container: HTMLDivElement) => {
+  const [expanded, setExpanded] = useState(false);
+
+  // Ref callback with cleanup return (React 19+).
+  // React calls this at the exact moment the div appears in the DOM — even
+  // though the panel starts collapsed. When it returns a cleanup function,
+  // React calls that on detach instead of invoking the callback with null.
+  const attachContainer = useCallback((container: HTMLDivElement) => {
     const listener = (event: WheelEvent) => {
       if (container.matches(":focus-within")) {
         event.preventDefault();
@@ -122,19 +126,28 @@ export const ScrollSafeInput: FunctionComponent<{
 
     container.addEventListener("wheel", listener, { passive: false });
 
-    // React 19: return a cleanup function (replaces the old "called with null" pattern)
     return () => {
       container.removeEventListener("wheel", listener);
     };
   }, []);
 
   return (
-    <div ref={containerRef}>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+    <div>
+      <button onClick={() => setExpanded((e) => !e)}>
+        {expanded ? "Hide" : "Show"} advanced settings
+      </button>
+      {expanded && (
+        <div ref={attachContainer} style={{ marginTop: 8 }}>
+          <label>
+            Max price:{" "}
+            <input
+              type="number"
+              value={value}
+              onChange={(e) => onChange(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 };
@@ -149,8 +162,9 @@ export const ScrollSafeInput: FunctionComponent<{
  *
  * 2. Ref callback cleanup (React 19+): return a cleanup function.
  *    Old: called with null on unmount (had to guard with if (!node) return)
- *    New: callback receives the node (never null), return () => { cleanup() }
- *    The callback is only called on attach. Detach is handled by the return.
+ *    New: return () => { cleanup() } — React calls the cleanup on detach
+ *    instead of invoking the callback with null. (Without a returned
+ *    cleanup, the null-call behavior still exists for backwards compat.)
  *
  * 3. useImperativeHandle: expose a custom API, not the raw DOM node.
  *    This is a deliberate API boundary — the parent gets specific methods.
