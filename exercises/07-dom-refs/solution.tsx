@@ -7,6 +7,7 @@ import {
   type FunctionComponent,
   type Ref,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -22,6 +23,51 @@ import {
 // >> the new version is. Our codebase still uses forwardRef in many places;
 // >> new code should use the ref-as-prop pattern.
 // ---------------------------------------------------------------------------
+
+// PROVIDED — paint timeline recorder (same as exercise)
+const timelineEvents: string[] = [];
+const timelineStart = performance.now();
+
+const recordTimelineEvent = (event: string) => {
+  if (performance.now() - timelineStart < 1000) {
+    timelineEvents.push(event);
+  }
+};
+
+{
+  let frame = 0;
+  const loop = () => {
+    frame += 1;
+    recordTimelineEvent(`browser paints frame ${frame}`);
+    if (frame < 3) requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+
+const PaintTimeline: FunctionComponent = () => {
+  const [events, setEvents] = useState<string[] | null>(null);
+  useEffect(() => {
+    const remaining = Math.max(0, 1000 - (performance.now() - timelineStart));
+    const timer = setTimeout(() => setEvents([...timelineEvents]), remaining);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div style={{ background: "#f5f5f5", padding: 12, marginTop: 12, fontSize: 13 }}>
+      <strong>Paint timeline</strong> (what happened in the first second)
+      {events === null ? (
+        <p>recording…</p>
+      ) : (
+        <ol style={{ margin: "8px 0 4px", fontFamily: "monospace" }}>
+          {events.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ol>
+      )}
+      <button onClick={() => window.location.reload()}>⟳ Reload to re-record</button>
+    </div>
+  );
+};
 
 export interface FancyInputHandle {
   focus: () => void;
@@ -66,21 +112,28 @@ export const FancyInputDemo: FunctionComponent = () => {
   const fancyInputRef = useRef<FancyInputHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [inputWidth, setInputWidth] = useState<number | null>(null);
+  recordTimelineEvent(
+    `render (width: ${inputWidth === null ? "measuring…" : `${inputWidth}px`})`,
+  );
 
   // useLayoutEffect fires synchronously after DOM mutations but BEFORE paint.
-  // This means the width is measured and set before the user ever sees
-  // "measuring..." — no flash.
+  // The paint timeline proves it: "measured" always appears BEFORE
+  // "browser paints frame 1". The first frame the user sees already has the
+  // width — the "measuring…" state is never painted.
   //
-  // If this were useEffect, the user would briefly see "measuring..." then
-  // the width — a visible flash. useLayoutEffect avoids this because React
-  // waits for it to finish before handing control to the browser to paint.
+  // With useEffect there is no such guarantee: the measurement is scheduled
+  // after paint, so the timeline (usually) shows frame 1 painted with
+  // "measuring…" first — a flash, whether or not your eyes catch it.
   //
   // Rule of thumb: useEffect for most side effects (data fetching, subscriptions).
-  // useLayoutEffect ONLY when you need to measure/mutate the DOM before paint.
+  // useLayoutEffect ONLY when you need to measure/mutate the DOM before paint
+  // — it blocks painting, so keep it fast.
   useLayoutEffect(() => {
     const input = containerRef.current?.querySelector("input");
     if (input) {
-      setInputWidth(input.getBoundingClientRect().width);
+      const width = input.getBoundingClientRect().width;
+      recordTimelineEvent(`measured ${width}px`);
+      setInputWidth(width);
     }
   }, []);
 
@@ -89,7 +142,8 @@ export const FancyInputDemo: FunctionComponent = () => {
       <FancyInput ref={fancyInputRef} placeholder="Type here..." />
       <button onClick={() => fancyInputRef.current?.focus()}>Focus</button>
       <button onClick={() => fancyInputRef.current?.clear()}>Clear</button>
-      <p>Input width: {inputWidth !== null ? `${inputWidth}px` : "measuring..."}</p>
+      <p>Input width: {inputWidth !== null ? `${inputWidth}px` : "measuring…"}</p>
+      <PaintTimeline />
     </div>
   );
 };
@@ -171,8 +225,10 @@ export const ScrollSafeInput: FunctionComponent<{
  *
  * 4. useLayoutEffect: runs synchronously after DOM mutation, before paint.
  *    Use it for DOM measurements (getBoundingClientRect, offsetHeight, etc.)
- *    that must be reflected in the same paint. useEffect would cause a flash.
- *    Rule: default to useEffect; only use useLayoutEffect when you see a flash.
+ *    that must be reflected in the same paint. useEffect gives no ordering
+ *    guarantee relative to paint — the paint timeline makes the difference
+ *    visible. Rule: default to useEffect; reach for useLayoutEffect only when
+ *    an intermediate state must never be painted.
  *
  * Real codebase references:
  *   - libraries/community-comment-form/src/communityCommentForm.tsx: forwardRef + useImperativeHandle (legacy)

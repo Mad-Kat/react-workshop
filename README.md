@@ -74,6 +74,10 @@ Exercises 02, 05, and 06 include a built-in `useRenderCount()` hook that display
 
 Exercise 05 shows a "Subscriptions started" badge. In the broken version it climbs with every keystroke in the guest input (the effect re-subscribes because a value the callback merely *reads* sits in the dependency array); after the `useEffectEvent` fix it stays at 1.
 
+### Paint Timeline (Exercise 07)
+
+Exercise 07A includes a paint-timeline recorder: it logs renders, the DOM measurement, and the browser's first paints in order. With `useEffect` the timeline shows frame 1 painted before the measurement (the user saw "measuring…"); with `useLayoutEffect` the measurement always lands before the first paint. The one-frame "flash" is too fast for eyes — the timeline is the instrument.
+
 ### Fake-SSR Simulator (Exercise 12)
 
 Exercise 12 runs inside a fake-SSR harness: a Web Worker (no `window`, no `localStorage` — just like Node) renders the component with `renderToString`, then the main thread hydrates the HTML. Server crashes appear as real `ReferenceError`s in the "server render" pane, and hydration mismatches show React's actual console diff. The simulation re-runs on every save.
@@ -165,3 +169,4 @@ The original workshop had 18 days. This version consolidates to 12 exercises:
 16. **Made Exercise 07B observable** — the scroll-safe input now sits in a collapsed-by-default panel, so the useRef+useEffect timing bug actually manifests (scroll changes the value) before the ref-callback fix
 17. **Built a fake-SSR simulator for Exercise 12** — `renderToString` in a Web Worker + client hydration makes both server crashes and the hydration mismatch observable; previously the exercise was purely conceptual
 18. **Normalized guide structure** — consistent `Exercise A/B/C` headings, per-section step numbering, and `Verify` sections across all guides; Exercise 09's actions refactor got its missing "Exercise B" heading
+19. **Replaced flash-spotting in Exercise 07A with a paint timeline** — same reasoning as the Exercise 03 render counter: the one-frame flash isn't reliably visible, so the timeline records renders, the measurement, and the first paints to make the `useEffect` vs `useLayoutEffect` ordering observable

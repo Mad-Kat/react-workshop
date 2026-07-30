@@ -57,39 +57,49 @@ Wrap the `<FancyInput>` in a `<div ref={containerRef}>`, then query the input in
 
 ### Step 5: Which hook do you use for measurement?
 
-Try `useEffect` first:
+Try `useEffect` first, and log the measurement into the provided paint timeline:
 
 ```tsx
 useEffect(() => {
   const input = containerRef.current?.querySelector("input");
   if (input) {
-    setInputWidth(input.getBoundingClientRect().width);
+    const width = input.getBoundingClientRect().width;
+    recordTimelineEvent(`measured ${width}px`);
+    setInputWidth(width);
   }
 }, []);
 ```
 
-This fires after the browser paints. The sequence is: render, paint "measuring...", measure, call `setInputWidth`, repaint with the width. The user briefly sees "measuring..." before the width appears.
+Reload and read the timeline. You'll (usually) see:
 
-### Step 6: What if you cannot tolerate that flash?
-
-`useLayoutEffect` runs after DOM mutation but before the browser paints. The sequence becomes: render, measure, call `setInputWidth`, then paint once with the correct width. No flash.
-
-```tsx
-useLayoutEffect(() => {
-  const input = containerRef.current?.querySelector("input");
-  if (input) {
-    setInputWidth(input.getBoundingClientRect().width);
-  }
-}, []);
+```
+1. render (width: measuring…)
+2. browser paints frame 1        ← the user saw "measuring…"
+3. measured 142px
+4. render (width: 142px)
+5. browser paints frame 2        ← only now do they see the width
 ```
 
-Rule of thumb: default to `useEffect`. Only reach for `useLayoutEffect` when you need to measure or mutate the DOM before the user sees anything.
+Frame 1 was painted **before** your measurement ran. The user's first frame showed "measuring…" — that's a flash, even if it's one frame and your eyes can't catch it. Don't go hunting for a visible flicker (on a fast machine there's nothing to see, and React sometimes even manages to flush the effect before the paint — the order with `useEffect` is simply *not guaranteed*). The timeline is the instrument, not your eyes.
 
-> **Tip:** if you do not see a flash with `useEffect`, open Chrome DevTools, go to Performance, set CPU to 6x slowdown, and try again. The flash becomes visible on slower hardware.
+### Step 6: What if the intermediate state must never be painted?
+
+`useLayoutEffect` runs after DOM mutation but **before the browser paints** — guaranteed. Switch the hook, reload, and compare:
+
+```
+1. render (width: measuring…)
+2. measured 142px
+3. render (width: 142px)
+4. browser paints frame 1        ← first frame already has the width
+```
+
+"measured" now always lands before "browser paints frame 1". The "measuring…" state exists in memory but is never painted. That guarantee is the whole difference: `useEffect` runs *around* paint at React's discretion; `useLayoutEffect` blocks paint until it's done — which is also why it must stay fast.
+
+Rule of thumb: default to `useEffect`. Only reach for `useLayoutEffect` when an intermediate state must never reach the user's eyes.
 
 ### Verify
 
-Wire up the Focus and Clear buttons to `fancyInputRef.current?.focus()` and `fancyInputRef.current?.clear()`. Confirm that clicking Focus moves the cursor to the input, clicking Clear empties the input and focuses it, and the width displays without a flash.
+Wire up the Focus and Clear buttons to `fancyInputRef.current?.focus()` and `fancyInputRef.current?.clear()`. Confirm that clicking Focus moves the cursor to the input, clicking Clear empties the input and focuses it, and — with `useLayoutEffect` — the paint timeline shows "measured" before "browser paints frame 1" on every reload.
 
 ---
 
