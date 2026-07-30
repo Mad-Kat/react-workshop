@@ -4,7 +4,7 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
@@ -24,10 +24,43 @@ const subscribeToLiveRateUpdates = (
   roomId: string,
   callback: (newScore: number) => void,
 ): (() => void) => {
+  subscriptionsStarted += 1;
+  notifyCounterListeners();
   const interval = setInterval(() => {
     callback(Math.floor(Math.random() * 100));
   }, 5000);
   return () => clearInterval(interval);
+};
+
+// PROVIDED — subscription counter (same as exercise)
+let subscriptionsStarted = 0;
+const counterListeners = new Set<() => void>();
+const notifyCounterListeners = () => counterListeners.forEach((l) => l());
+
+const SubscriptionCount: FunctionComponent = () => {
+  const [count, setCount] = useState(subscriptionsStarted);
+  useEffect(() => {
+    const listener = () => setCount(subscriptionsStarted);
+    counterListeners.add(listener);
+    return () => {
+      counterListeners.delete(listener);
+    };
+  }, []);
+  return (
+    <span
+      style={{
+        background: count > 1 ? "#fce8e6" : "#e6f4ea",
+        color: count > 1 ? "#c5221f" : "#137333",
+        borderRadius: 4,
+        padding: "2px 8px",
+        fontWeight: 600,
+        fontSize: 13,
+        marginLeft: 8,
+      }}
+    >
+      Subscriptions started: {count}
+    </span>
+  );
 };
 
 export const RoomBookingPanel: FunctionComponent<{
@@ -51,10 +84,24 @@ export const RoomBookingPanel: FunctionComponent<{
   // handler), not in an effect watching a boolean flag.
 
   // Effect C → LEGITIMATE EFFECT: synchronizes with an external occupancy
-  // score subscription. Correct — keep it.
+  // score subscription. Keep it — but the analytics requirement ("report the
+  // CURRENT guest count on every rate update") must not force re-subscription.
+  //
+  // useEffectEvent separates the two concerns:
+  //   - The EFFECT synchronizes with the subscription → deps: [room.id]
+  //   - The EVENT is what happens on each update → always sees latest state
+  //
+  // onRateUpdate is not reactive: it doesn't go in the dep array, and the
+  // linter knows not to ask for it. It always reads the latest `guests`.
+  // (Don't call it during render, and don't pass it to other components.)
+  const onRateUpdate = useEffectEvent((newScore: number) => {
+    setLiveRate(newScore);
+    trackEvent("rate_update_seen", { roomId: room.id, guests });
+  });
+
   useEffect(() => {
     const unsubscribe = subscribeToLiveRateUpdates(room.id, (newScore) => {
-      setLiveRate(newScore);
+      onRateUpdate(newScore);
     });
     return unsubscribe;
   }, [room.id]);
@@ -95,6 +142,9 @@ export const RoomBookingPanel: FunctionComponent<{
       </p>
       <p>Total: ${totalRate}</p>
       <button onClick={handleConfirmBooking}>Confirm Booking</button>
+      <p>
+        <SubscriptionCount />
+      </p>
       <RenderCount count={renderCount} />
     </div>
   );
