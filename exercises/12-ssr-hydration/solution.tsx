@@ -84,11 +84,12 @@ export const ResponsiveLayout: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Solution B: typeof window guard + useId
 //
-// Fix 1 (localStorage crash): The initializer function runs once on first
-// render. On the server, typeof window === "undefined" so we return "light".
+// Fix 1 (localStorage crash): The initializer runs during the first render —
+// including the server render. The typeof-window guard is what prevents the
+// crash: on the server it returns "light".
 //
 // Note: pass getInitialTheme as a function reference, not getInitialTheme(),
-// so React only calls it once on mount instead of on every render.
+// so React only calls it on the first render instead of on every render.
 //
 // Fix 2 (hydration mismatch): useId() generates a stable identifier that is
 // the same on server and client. Math.random() produces different values in

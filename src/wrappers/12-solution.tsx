@@ -1,5 +1,11 @@
-import { SSRExercises } from "../../exercises/12-ssr-hydration/solution.tsx";
+import { SSRSimulator } from "../ssr-sim/SSRSimulator";
 
 export default function Wrapper() {
-  return <SSRExercises />;
+  return (
+    <SSRSimulator
+      moduleKey="12-ssr-hydration/solution"
+      exportName="SSRExercises"
+      title="Exercise 12 — SSR & Hydration (solution)"
+    />
+  );
 }

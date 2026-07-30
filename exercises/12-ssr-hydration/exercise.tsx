@@ -8,6 +8,11 @@
  *
  * If you get stuck, open guide.md for step-by-step thinking.
  *
+ * This exercise runs in a fake-SSR simulator: a Web Worker (no window, no
+ * localStorage — just like Node) renders your component to HTML, then the
+ * browser hydrates it. Fix the bugs one at a time and save; the simulator
+ * re-runs automatically and the panes go from red to green.
+ *
  * Fix three problems below: two server crashes and one hydration mismatch.
  */
 
@@ -68,7 +73,8 @@ export const ResponsiveLayout: FunctionComponent = () => {
 //   Step 2: Extract a function (e.g., getInitialTheme) that checks
 //           `typeof window === "undefined"` and returns "light" as default.
 //   Step 3: Pass the function REFERENCE to useState (not a function call):
-//           `useState(getInitialTheme)` — React calls it once on mount.
+//           `useState(getInitialTheme)` — React calls it on the first render
+//           only. The typeof-window guard inside is what prevents the crash.
 //
 // TODO: Fix Bug 2 — Math.random() hydration mismatch.
 //   Step 1: Math.random() produces different values on server vs client.
