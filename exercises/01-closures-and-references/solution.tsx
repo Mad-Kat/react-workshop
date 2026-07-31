@@ -1,15 +1,15 @@
 /**
- * Exercise 01: Closures & Reference Equality — ANNOTATED ANSWERS
- * ================================================================
+ * Exercise 01: Closures & Reference Equality — ANSWERS
+ * ====================================================
  *
- * This is the "solution" — all answers revealed with explanations
- * and the React connection drawn for each concept.
+ * Every snippet's output, why it comes out that way, and what each one maps
+ * to in React. Released after the session.
  */
 
 import type { FunctionComponent } from "react";
 
 // ---------------------------------------------------------------------------
-// Solution A: Closures — functions capture variables, not snapshots (answers)
+// Part A: Closures — answers
 // ---------------------------------------------------------------------------
 
 export const ClosuresExercise: FunctionComponent = () => {
@@ -96,7 +96,7 @@ currentValue = 999;`}</pre>
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: Reference Equality — all answers revealed
+// Part B: Reference equality — answers
 // ---------------------------------------------------------------------------
 
 export const ReferenceEqualityExercise: FunctionComponent = () => {

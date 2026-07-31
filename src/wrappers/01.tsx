@@ -4,8 +4,8 @@ import {
   createSnippet2,
   createSnippet3,
   createSnippet4,
-  ReferenceEqualityExercise,
 } from "../../exercises/01-closures-and-references/exercise.tsx";
+import { ReferenceEqualityExercise } from "../../exercises/01-closures-and-references/referenceEquality.tsx";
 
 const ClosuresExercise = () => {
   const [results, setResults] = useState<string[]>([]);
