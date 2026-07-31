@@ -4,7 +4,11 @@ Internal workshop for medior engineers who work in this codebase. They know Reac
 
 **Philosophy:** Rewire mental models, not teach syntax. Every exercise uses patterns, hooks, and anti-patterns from our actual codebase. Participants fix buggy or suboptimal code, build components from interfaces, or predict behavior — not blank-slate builds. This mirrors real work and forces reading before writing.
 
-**Format:** One exercise per week, hosted in a CodeSandbox repo. ~30 min hands-on + 15 min group discussion of learnings. Exercises are released weekly.
+**Format:** One exercise every second week, run on StackBlitz off the `main` branch. ~30 min hands-on + 15 min group discussion of learnings.
+
+> **This is the `dev` branch — the instructor's copy, with all 12 exercises and solutions.**
+> Participants follow `main`, which has separate history and only contains released material.
+> Release with `scripts/publish.sh NN` at the start of a session and `scripts/publish.sh NN --reveal` after it.
 
 **Stack context:** Next.js Pages Router, Relay, next-yak, Vitest. Exercises reference real packages (`@segments/relay`, `@blocks/lazy`, `@segments/error-boundary`, etc.) so participants recognize patterns in their daily work.
 
