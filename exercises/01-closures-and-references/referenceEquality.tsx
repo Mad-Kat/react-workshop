@@ -131,7 +131,7 @@ export const ReferenceEqualityExercise: FunctionComponent = () => {
         in your dependency array with the previous render's value using <code>Object.is()</code> (same
         as <code>===</code> for our purposes). If you write <code>{"useEffect(() => { ... }, [{ limit: 20 }])"}</code>,
         the object is <strong>new every render</strong> — so the effect runs every render. This is
-        why exercises 06 and 07 exist.
+        why exercises 05 and 06 exist.
       </div>
 
       <div style={{ marginTop: 16, padding: 12, background: "#fff7ed", borderRadius: 8, fontSize: 13 }}>
