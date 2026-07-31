@@ -53,7 +53,9 @@ else
     esac
   done < <(git ls-tree -r --name-only "$SRC" "$DIR/")
   files+=("src/wrappers/${EX}.tsx")
-  TITLE=$(git show "${SRC}:${DIR}/guide.md" 2>/dev/null | sed -n '1s/^# //p' | sed 's/: Way to get to the solution//')
+  # exercise name from the curriculum table in the README
+  TITLE=$(git show "${SRC}:README.md" | awk -F'|' -v ex="$EX" '
+    $2 ~ "^ *"ex" *$" { gsub(/^ +| +$/, "", $3); print $3; exit }')
   MSG="Exercise ${EX}${TITLE:+: $TITLE}"
 fi
 
