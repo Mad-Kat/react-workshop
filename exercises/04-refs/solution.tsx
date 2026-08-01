@@ -5,12 +5,7 @@
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  type StationStatus,
-  type WeatherReading,
-  fetchWeatherReading,
-  fakeSearch,
-} from "./api";
+import { type WeatherReading, fetchWeatherReading, fakeSearch } from "./api";
 
 // ---------------------------------------------------------------------------
 // Solution A: Weather Station Poller
@@ -34,7 +29,7 @@ export function useWeatherStationPoller(stationId: string | null) {
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // performFetch no longer depends on isFetching (it reads from ref),
-  // so it's stable — only depends on stationId
+  // so it's stable and only depends on stationId
   const performFetch = useCallback(() => {
     if (isFetchingRef.current || !stationId) {
       return;
@@ -54,7 +49,7 @@ export function useWeatherStationPoller(stationId: string | null) {
       });
   }, [stationId]);
 
-  // cleanup no longer depends on intervalId/timeoutId — reads from refs
+  // cleanup no longer depends on intervalId/timeoutId
   const cleanup = useCallback(() => {
     if (intervalIdRef.current) {
       clearInterval(intervalIdRef.current);
@@ -84,42 +79,17 @@ export function useWeatherStationPoller(stationId: string | null) {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (
-        document.visibilityState === "visible" &&
-        data?.status !== "OFFLINE"
-      ) {
+      if (document.visibilityState === "visible" && data?.status !== "OFFLINE") {
         performFetch();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [data?.status, performFetch]);
 
   return { data };
 }
-
-/**
- * What changed:
- *
- * 1. `isFetching` → `isFetchingRef` — never rendered, only used as a guard
- *    against concurrent requests. No re-render needed.
- *
- * 2. `intervalId` → `intervalIdRef` — the interval ID is behavioral state
- *    (used for cleanup), not rendering state.
- *
- * 3. `timeoutId` → `timeoutIdRef` — same as intervalId.
- *
- * 4. `performFetch` dependencies shrunk from `[stationId, isFetching]` to
- *    just `[stationId]` — no more re-creation on every fetch cycle.
- *
- * 5. `cleanup` dependencies shrunk from `[intervalId, timeoutId]` to `[]` —
- *    fully stable.
- *
- * 6. The main effect no longer re-runs on every fetch cycle, which was
- *    the root cause of the instability in the exercise version.
- */
 
 export const WeatherStationDisplay: FunctionComponent<{
   stationId: string;
@@ -153,23 +123,19 @@ export const DebouncedSearch: FunctionComponent = () => {
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-
-  // Rendered — triggers the re-render that shows new results and the
+  // Rendered —> triggers the re-render that shows new results and the
   // updated "previous search" label.
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-
   // Fix 1: timerId → ref. Never rendered, only used for cleanup.
-  // Cleanup effect now has empty deps — the ref is always current.
+  // Cleanup effect now has empty deps and the ref is always current.
   const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Fix 2 (main learning): previousSearchTerm → ref, updated synchronously.
   // In the exercise, the effect ran *after* the render triggered by
   // setCurrentSearchTerm, so it was always one cycle late. By assigning
   // `previousSearchTermRef.current = currentSearchTerm` in the same
-  // callback — before calling setCurrentSearchTerm — we capture the true
+  // callback andbefore calling setCurrentSearchTerm — we capture the true
   // previous value at exactly the right moment.
   const previousSearchTermRef = useRef("");
-
   // Fix 3: searchCount → ref. Only used for console.log, never rendered.
   // Incrementing a ref doesn't cause a re-render.
   const searchCountRef = useRef(0);
@@ -234,26 +200,9 @@ export const DebouncedSearch: FunctionComponent = () => {
   );
 };
 
-/**
- * What changed:
- *
- * 1. timerId: state → ref
- *    - Never rendered, only used to clear the previous timer
- *    - No more re-render on every debounce cycle
- *    - Cleanup effect has empty deps (ref is always current)
- *
- * 2. previousSearchTerm: state + effect → ref (main pattern)
- *    - Updated synchronously in the search callback, before setCurrentSearchTerm
- *    - No more "one render behind" issue from the effect
- *    - Note: reading a ref in JSX won't trigger a re-render when it
- *      changes — the display updates because `currentSearchTerm` (state)
- *      also changes at the same time
- *
- * 3. searchCount: state → ref
- *    - Only used for console.log, never rendered
- *    - Incrementing a ref doesn't cause a re-render
- *
- * Real codebase references:
- *   - domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts: timer ID refs
- *   - libraries/product-updates-notifications/src/productDetailPage/useSubscribeToPriceChange.tsx: one-time guard ref
- */
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   State is for values the UI renders. Refs are for values the component has
+//   to remember but never shows: timers, in-flight flags, previous values.
+//   Behavioral state in useState means a re-render for nothing.
+// ---------------------------------------------------------------------------

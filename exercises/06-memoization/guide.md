@@ -39,14 +39,14 @@ const RecipeComponent = displayMode === "card" ? CardView : RowView;
 ### Problem 2: The useMemo with formatDuration
 
 ```tsx
-const formatDuration = (minutes: number) =>
-  `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
+const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 
 const annotatedRecipes = useMemo(
-  () => recipes.map((r) => ({
-    ...r,
-    displayDuration: formatDuration(r.durationMinutes),
-  })),
+  () =>
+    recipes.map((r) => ({
+      ...r,
+      displayDuration: formatDuration(r.durationMinutes),
+    })),
   [recipes, formatDuration],
 );
 ```
@@ -65,8 +65,7 @@ Two options. First, `formatDuration` does not read any props or state, so move i
 
 ```tsx
 // Outside the component
-const formatDuration = (minutes: number) =>
-  `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
+const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 ```
 
 Second, the `.map()` over a small list is not expensive enough to memoize in the first place. Remove the `useMemo` entirely and just compute inline:
@@ -144,11 +143,7 @@ The parent re-renders every second (a timer increments `tick`). `ItemCard` is wr
 `React.memo` does shallow comparison on all props. If every prop is referentially identical between renders, memo skips the re-render. So at least one prop must be changing. Look at the JSX:
 
 ```tsx
-<ItemCard
-  key={item.id}
-  item={item}
-  style={index === 0 ? { border: "1px solid red" } : undefined}
-/>
+<ItemCard key={item.id} item={item} style={index === 0 ? { border: "1px solid red" } : undefined} />
 ```
 
 ### Step 12: Which prop is unstable?
@@ -163,11 +158,7 @@ Extract the style object to module scope so it is the same reference every rende
 const FEATURED_STYLE = { border: "1px solid red" };
 
 // Inside component
-<ItemCard
-  key={item.id}
-  item={item}
-  style={index === 0 ? FEATURED_STYLE : undefined}
-/>
+<ItemCard key={item.id} item={item} style={index === 0 ? FEATURED_STYLE : undefined} />;
 ```
 
 After fixing, watch the RenderCount badges. They should stay at 1 even as the timer ticks.
@@ -238,10 +229,7 @@ function ProductList({ category, sortBy }) {
 Moving the object to module scope doesn't work here because it depends on props. You can't extract it. This is where `useMemo` is the right tool:
 
 ```tsx
-const filters = useMemo(
-  () => ({ category, sortBy }),
-  [category, sortBy],
-);
+const filters = useMemo(() => ({ category, sortBy }), [category, sortBy]);
 ```
 
 Now `filters` keeps the same reference as long as `category` and `sortBy` don't change. `React.memo` on children works. Effects with `filters` in deps only re-run when the values actually change.
@@ -284,7 +272,7 @@ const handleChange = useCallback((q) => {
   setFilters({ query: q });
 }, []);
 
-<SearchInput onChange={handleChange} />
+<SearchInput onChange={handleChange} />;
 ```
 
 This works but pushes the burden to every consumer. If one caller forgets, the effect silently runs too often. The component is fragile because its correctness depends on something it doesn't control.
@@ -335,11 +323,11 @@ function SearchInput({ onChange }) {
 
 **Which option to use?**
 
-| Approach | Who is responsible? | Downsides |
-|---|---|---|
-| Caller stabilizes with `useCallback` | The parent | Fragile. Every consumer must remember. One inline function breaks it. |
-| Internal ref | The component | Dependency array lie. Linter warning. Hidden connection. |
-| `useEffectEvent` | React | Only works inside effects. Cannot stabilize callbacks passed as props. |
+| Approach                             | Who is responsible? | Downsides                                                              |
+| ------------------------------------ | ------------------- | ---------------------------------------------------------------------- |
+| Caller stabilizes with `useCallback` | The parent          | Fragile. Every consumer must remember. One inline function breaks it.  |
+| Internal ref                         | The component       | Dependency array lie. Linter warning. Hidden connection.               |
+| `useEffectEvent`                     | React               | Only works inside effects. Cannot stabilize callbacks passed as props. |
 
 For effects that depend on a prop callback, `useEffectEvent` is the cleanest solution in React 19. For callbacks that need to be stable as props (e.g., passed to a `React.memo`'d child), the ref approach is the most common pattern in production codebases. It's a pragmatic trade-off. Be aware of what you're doing: you're decoupling the effect from a value it actually depends on. Document it clearly so future readers understand why the ref exists.
 

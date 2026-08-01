@@ -45,11 +45,7 @@ function getWidthServerSnapshot(): null {
 }
 
 export const ResponsiveLayout: FunctionComponent = () => {
-  const width = useSyncExternalStore(
-    subscribeToResize,
-    getWidthSnapshot,
-    getWidthServerSnapshot,
-  );
+  const width = useSyncExternalStore(subscribeToResize, getWidthSnapshot, getWidthServerSnapshot);
 
   // width is null during SSR and hydration — render a layout-neutral placeholder
   if (width === null) {
@@ -68,9 +64,7 @@ export const ResponsiveLayout: FunctionComponent = () => {
       <h2>Responsive Layout</h2>
       <p>Window width: {width}px</p>
       {isMobile ? (
-        <div style={{ background: "#e3f2fd", padding: 16 }}>
-          Mobile layout — stacked
-        </div>
+        <div style={{ background: "#e3f2fd", padding: 16 }}>Mobile layout — stacked</div>
       ) : (
         <div style={{ background: "#f3e5f5", padding: 16, display: "flex", gap: 16 }}>
           <div style={{ flex: 1 }}>Desktop column 1</div>
@@ -171,3 +165,10 @@ export const SSRExercises: FunctionComponent = () => {
  * >> discussion after the exercise. Key takeaway for students:
  * >> "Server Components never hydrate. Client Components always do."
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   The server has no window, and the first client render must match the
+//   server's HTML exactly. Read browser-only values after hydration
+//   (useSyncExternalStore), never during the first render.
+// ---------------------------------------------------------------------------

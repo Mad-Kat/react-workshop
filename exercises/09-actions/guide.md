@@ -33,10 +33,10 @@ The manual version creates a fake todo with `id: "optimistic"`, adds it to the d
 `useOptimistic` handles this automatically:
 
 ```tsx
-const [optimisticTodos, addOptimisticTodo] = useOptimistic(
-  todos,
-  (state, newTodo: Todo) => [...state, newTodo]
-);
+const [optimisticTodos, addOptimisticTodo] = useOptimistic(todos, (state, newTodo: Todo) => [
+  ...state,
+  newTodo,
+]);
 ```
 
 Call `addOptimisticTodo(newItem)` inside the transition. The optimistic value is visible immediately. When the transition ends (success or failure), it **automatically reverts** to the real `todos` state. No manual `setOptimisticTodo(null)`.

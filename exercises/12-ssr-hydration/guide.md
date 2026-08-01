@@ -15,6 +15,7 @@ On the server, there is no `window`. There is no browser, no viewport, no DOM. T
 ### Step 1: What do you need here?
 
 You need a value that:
+
 - Has a safe default on the server (where `window` doesn't exist)
 - Reads the real value on the client
 - Updates when the window resizes
@@ -27,9 +28,9 @@ That's three requirements. A simple `typeof window` guard handles the first two,
 
 ```tsx
 const width = useSyncExternalStore(
-  subscribeToResize,          // subscribe: listen for changes on client
-  () => window.innerWidth,    // getSnapshot: read current value on client
-  () => null,                 // getServerSnapshot: safe default for server
+  subscribeToResize, // subscribe: listen for changes on client
+  () => window.innerWidth, // getSnapshot: read current value on client
+  () => null, // getServerSnapshot: safe default for server
 );
 ```
 
@@ -65,15 +66,15 @@ Extract the initializer into a function that checks for the server environment:
 
 ```tsx
 const getInitialTheme = (): "light" | "dark" => {
-  if (typeof window === "undefined") return "light";  // server default
+  if (typeof window === "undefined") return "light"; // server default
   return localStorage.getItem("theme") === "dark" ? "dark" : "light";
 };
 ```
 
-Pass the function *reference* to `useState`, not the result of calling it:
+Pass the function _reference_ to `useState`, not the result of calling it:
 
 ```tsx
-const [theme, setTheme] = useState(getInitialTheme);  // function reference, not call!
+const [theme, setTheme] = useState(getInitialTheme); // function reference, not call!
 ```
 
 React only calls the initializer function once, on mount. On the server, it returns `"light"`. On the client, it reads from `localStorage`.
@@ -101,7 +102,7 @@ const selectId = `theme-${Math.random().toString(36).slice(2)}`;
 `useId()` generates a stable identifier that React guarantees will be the same on server and client:
 
 ```tsx
-const selectId = useId();  // same value on server and client
+const selectId = useId(); // same value on server and client
 ```
 
 No `Math.random()`, no mismatch.

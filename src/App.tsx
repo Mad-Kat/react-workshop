@@ -12,13 +12,12 @@ const wrappers = import.meta.glob("./wrappers/*.tsx") as Record<
 >;
 
 const wrapperIds = Object.keys(wrappers)
-  .map(k => k.replace("./wrappers/", "").replace(".tsx", ""))
+  .map((k) => k.replace("./wrappers/", "").replace(".tsx", ""))
   .sort();
 
 // The newest released exercise — this branch only contains what has been
 // released, so the latest one is what the current session is about.
-const latestExerciseId =
-  wrapperIds.filter(id => !id.endsWith("-solution")).pop() ?? "01";
+const latestExerciseId = wrapperIds.filter((id) => !id.endsWith("-solution")).pop() ?? "01";
 
 function getExerciseId(): string {
   const params = new URLSearchParams(window.location.search);
@@ -46,10 +45,7 @@ function loadWrapper(id: string): ComponentType {
 // Error Boundary
 // ---------------------------------------------------------------------------
 
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
     return { error };
@@ -59,9 +55,7 @@ class ErrorBoundary extends Component<
       return (
         <div style={{ padding: 32, color: "red" }}>
           <h2>Something went wrong</h2>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {this.state.error.message}
-          </pre>
+          <pre style={{ whiteSpace: "pre-wrap" }}>{this.state.error.message}</pre>
           <button onClick={() => this.setState({ error: null })}>Retry</button>
         </div>
       );
@@ -107,14 +101,12 @@ export const App = () => {
         Exercise
         <select
           value={exId}
-          onChange={e => select(e.target.value)}
+          onChange={(e) => select(e.target.value)}
           style={{ fontSize: 13, padding: "4px 6px" }}
         >
-          {wrapperIds.map(id => (
+          {wrapperIds.map((id) => (
             <option key={id} value={id}>
-              {id.endsWith("-solution")
-                ? `${id.replace("-solution", "")} — solution`
-                : id}
+              {id.endsWith("-solution") ? `${id.replace("-solution", "")} — solution` : id}
             </option>
           ))}
         </select>

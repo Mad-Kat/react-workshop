@@ -1,4 +1,9 @@
-import { TodoListStep1UseTransition, TodoListStep2UseOptimistic, TodoListStep3FormAction, LikeButton } from "../../exercises/09-actions/solution.tsx";
+import {
+  TodoListStep1UseTransition,
+  TodoListStep2UseOptimistic,
+  TodoListStep3FormAction,
+  LikeButton,
+} from "../../exercises/09-actions/solution.tsx";
 
 export default function Wrapper() {
   return (

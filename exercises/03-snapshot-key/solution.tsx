@@ -36,9 +36,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   placeholder,
 }) => {
   const renderCount = useRenderCount();
-  const [inputValue, setInputValue] = useState<string>(
-    fontSize !== null ? String(fontSize) : "",
-  );
+  const [inputValue, setInputValue] = useState<string>(fontSize !== null ? String(fontSize) : "");
 
   // No useEffect needed — key trick handles the reset
 
@@ -78,10 +76,7 @@ export const ThemeEditor: FunctionComponent = () => {
     <div>
       <h2>Font size</h2>
       {presets.map((preset) => (
-        <button
-          key={preset.id}
-          onClick={() => setSelectedFontSize(preset.size)}
-        >
+        <button key={preset.id} onClick={() => setSelectedFontSize(preset.size)}>
           {preset.label}
         </button>
       ))}
@@ -123,45 +118,41 @@ interface NotificationSettingsProps {
 
 // The dialog itself is now simple — no effect needed.
 // The parent uses `key={JSON.stringify(preferences)}` to remount on change.
-export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsProps> =
-  ({ preferences, updatePreferences, onClose }) => {
-    // Fresh copy on mount — no effect sync needed
-    const [state, setState] = useState<NotificationPreferences>(preferences);
+export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsProps> = ({
+  preferences,
+  updatePreferences,
+  onClose,
+}) => {
+  // Fresh copy on mount — no effect sync needed
+  const [state, setState] = useState<NotificationPreferences>(preferences);
 
-    const preferencesHaveChanged =
-      JSON.stringify(preferences) !== JSON.stringify(state);
+  const preferencesHaveChanged = JSON.stringify(preferences) !== JSON.stringify(state);
 
-    const toggleChannel = (channel: keyof NotificationPreferences) => {
-      setState({ ...state, [channel]: !state[channel] });
-    };
-
-    const saveSettings = () => {
-      updatePreferences(state);
-      onClose();
-    };
-
-    return (
-      <div>
-        <h3>Notification Settings</h3>
-        {(Object.keys(state) as Array<keyof NotificationPreferences>).map(
-          (channel) => (
-            <label key={channel}>
-              <input
-                type="checkbox"
-                checked={state[channel]}
-                onChange={() => toggleChannel(channel)}
-              />
-              {channel}
-            </label>
-          ),
-        )}
-        <button onClick={saveSettings} disabled={!preferencesHaveChanged}>
-          Save
-        </button>
-        <button onClick={onClose}>Cancel</button>
-      </div>
-    );
+  const toggleChannel = (channel: keyof NotificationPreferences) => {
+    setState({ ...state, [channel]: !state[channel] });
   };
+
+  const saveSettings = () => {
+    updatePreferences(state);
+    onClose();
+  };
+
+  return (
+    <div>
+      <h3>Notification Settings</h3>
+      {(Object.keys(state) as Array<keyof NotificationPreferences>).map((channel) => (
+        <label key={channel}>
+          <input type="checkbox" checked={state[channel]} onChange={() => toggleChannel(channel)} />
+          {channel}
+        </label>
+      ))}
+      <button onClick={saveSettings} disabled={!preferencesHaveChanged}>
+        Save
+      </button>
+      <button onClick={onClose}>Cancel</button>
+    </div>
+  );
+};
 
 // The fix: key={JSON.stringify(preferences)} in the parent remounts on change
 export const NotificationSettingsParent: FunctionComponent = () => {
@@ -178,12 +169,8 @@ export const NotificationSettingsParent: FunctionComponent = () => {
 
   return (
     <div>
-      <button onClick={simulateExternalUpdate}>
-        Simulate external update
-      </button>
-      <button onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? "Close" : "Open"} dialog
-      </button>
+      <button onClick={simulateExternalUpdate}>Simulate external update</button>
+      <button onClick={() => setIsOpen(!isOpen)}>{isOpen ? "Close" : "Open"} dialog</button>
       {isOpen && (
         <NotificationSettingsDialog
           key={JSON.stringify(preferences)}
@@ -197,17 +184,10 @@ export const NotificationSettingsParent: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Real codebase references:
-//   - domains/archived-orders/src/overview/datePicker.tsx: effect-based reset on prop change
-//   - domains/cookie-compliance/src/settings/dialog/useCookieSettingsHelper.tsx: editable copy with effect sync
-//
-// Key takeaways:
-//   1. Setting state doesn't mutate the variable — the current render always
-//      sees a snapshot. The new value is only visible in the next render.
-//   2. `useEffect(() => setState(prop), [prop])` causes a double-render — the
-//      first one built on a stale snapshot — and is almost always replaceable
-//      by `key` or derived state.
-//   3. `key` on a component tells React to throw away the old instance and
-//      mount a fresh one. Use it to reset all state at once when a controlling
-//      value changes.
+// Key takeaway
+//   Each render sees a snapshot: setting state doesn't change the variable
+//   you're currently looking at.
+//   `useEffect(() => setState(prop), [prop])` therefore renders twice, the
+//   first time on a stale value. Reset with `key`, or in the event handler
+//   that caused the change. See guide.md for when `key` is the wrong tool.
 // ---------------------------------------------------------------------------

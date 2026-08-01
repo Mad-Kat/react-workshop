@@ -1,4 +1,8 @@
-import { TodoListManual, TodoListWithActions, LikeButton } from "../../exercises/09-actions/exercise.tsx";
+import {
+  TodoListManual,
+  TodoListWithActions,
+  LikeButton,
+} from "../../exercises/09-actions/exercise.tsx";
 
 export default function Wrapper() {
   return (

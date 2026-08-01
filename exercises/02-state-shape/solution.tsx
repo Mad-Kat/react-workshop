@@ -39,22 +39,38 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
       : statusIcon;
 
   if (isStationOffline) {
-    return <span>Station offline ({badge}) <RenderCount count={renderCount} /></span>;
+    return (
+      <span>
+        Station offline ({badge}) <RenderCount count={renderCount} />
+      </span>
+    );
   }
 
   if (!forecast) {
-    return <span>No forecast data ({badge}) <RenderCount count={renderCount} /></span>;
+    return (
+      <span>
+        No forecast data ({badge}) <RenderCount count={renderCount} />
+      </span>
+    );
   }
 
-  return <span>Current weather: {badge} <RenderCount count={renderCount} /></span>;
+  return (
+    <span>
+      Current weather: {badge} <RenderCount count={renderCount} />
+    </span>
+  );
 };
 
 // ---------------------------------------------------------------------------
 // Solution B: Temperature Reading
 //
 // The coupled useState + effect is replaced by a single useReducer.
-// The reducer atomically handles the unit toggle + temperature conversion.
-// prevUnit state is eliminated entirely — no more effect.
+// prevUnit is eliminated entirely — no more effect.
+//
+// Two things happen to this state, and the reducer names both:
+//   setTemperature — the input, which replaces one field
+//   toggleUnit     — the button, which changes the unit AND rewrites the
+//                    temperature, computed from the value already in state
 //
 // Why useReducer?
 // From "A Complete Guide to useEffect":
@@ -65,21 +81,18 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
 // only needs to dispatch won't need state variables in its dependency array.
 // ---------------------------------------------------------------------------
 
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
 type TemperatureState = { temperature: number; unit: "C" | "F" };
 
-type TemperatureAction =
-  | { type: "toggleUnit" }
-  | { type: "setTemperature"; value: number };
+type TemperatureAction = { type: "toggleUnit" } | { type: "setTemperature"; value: number };
 
-function temperatureReducer(
-  state: TemperatureState,
-  action: TemperatureAction,
-): TemperatureState {
+function temperatureReducer(state: TemperatureState, action: TemperatureAction): TemperatureState {
   switch (action.type) {
     case "toggleUnit":
       return state.unit === "C"
-        ? { temperature: state.temperature * (9 / 5) + 32, unit: "F" }
-        : { temperature: (state.temperature - 32) * (5 / 9), unit: "C" };
+        ? { temperature: round1(state.temperature * (9 / 5) + 32), unit: "F" }
+        : { temperature: round1((state.temperature - 32) * (5 / 9)), unit: "C" };
     case "setTemperature":
       return { ...state, temperature: action.value };
   }
@@ -97,9 +110,13 @@ export const TemperatureReading: FunctionComponent<{
 
   return (
     <div>
-      <span>
-        {temperature.toFixed(1)}°{unit}
-      </span>
+      <input
+        type="number"
+        value={temperature}
+        onChange={(e) => dispatch({ type: "setTemperature", value: Number(e.target.value) || 0 })}
+        style={{ width: 80 }}
+      />
+      <span>°{unit} </span>
       <button onClick={() => dispatch({ type: "toggleUnit" })}>
         Switch to °{unit === "C" ? "F" : "C"}
       </button>
@@ -109,11 +126,8 @@ export const TemperatureReading: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Key takeaways:
-//   1. If you can compute a value from existing state/props → derive inline.
-//      No useState, no useEffect, fewer renders.
-//   2. If two state variables must change atomically → useReducer.
-//      dispatch is stable (never changes identity) — bonus for effects.
-//   3. RenderCount should decrease after each fix. Derived state = zero
-//      extra render cycles. useReducer = one dispatch, one render.
+// Key takeaway
+//   If you can compute it during render, don't put it in state.
+//   When several values have to move together off the current state, one
+//   useReducer beats two setters and an effect.
 // ---------------------------------------------------------------------------

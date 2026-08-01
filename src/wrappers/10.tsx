@@ -1,4 +1,7 @@
-import { ProductPageManual, ProductPageWithSuspense } from "../../exercises/10-suspense/exercise.tsx";
+import {
+  ProductPageManual,
+  ProductPageWithSuspense,
+} from "../../exercises/10-suspense/exercise.tsx";
 
 export default function Wrapper() {
   return (

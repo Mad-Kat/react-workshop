@@ -7,15 +7,18 @@ Use these after the exercise to open the conversation toward where React is head
 Our codebase uses Next.js Pages Router — no React Server Components yet. But understanding RSC prepares for the App Router migration and clarifies why hydration patterns still matter.
 
 **React Server Components:**
+
 - Server Components run ONLY on the server — they never hydrate, never ship JS to the client, and have direct access to databases and file systems.
 - Client Components are marked with `"use client"` and follow the same two-pass model from this exercise. All four patterns (useSyncExternalStore, typeof window, static-first, null→boolean) still apply.
 - RSC = "virtual DOM over the network": the server serializes the component tree as a JSON-like payload and streams it to the client.
 
 **Streaming SSR with Suspense:**
+
 - Instead of waiting for the full page before sending HTML, Suspense boundaries let the server flush completed sections progressively. Shell (nav, header) first; slow data sections later.
 - This is how Next.js App Router achieves fast TTFBs on data-heavy pages.
 
 **The key distinction:**
+
 > "Server Components never hydrate. Client Components always do."
 
 Everything in this exercise lives in Client Components. RSC doesn't remove the problem — it moves it to a smaller, explicitly-marked surface.

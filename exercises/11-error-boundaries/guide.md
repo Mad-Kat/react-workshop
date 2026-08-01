@@ -32,12 +32,14 @@ Before writing code, think about criticality. Not all sections are equally impor
 - **RecommendationsSection** is purely additive. If it fails, the user won't miss it. Return `null` to silently hide the section.
 
 ```tsx
-<ErrorBoundary fallback={({ error, retry }) => (
-  <div>
-    <p>{error.message}</p>
-    <button onClick={retry}>Retry</button>
-  </div>
-)}>
+<ErrorBoundary
+  fallback={({ error, retry }) => (
+    <div>
+      <p>{error.message}</p>
+      <button onClick={retry}>Retry</button>
+    </div>
+  )}
+>
   <ProductInfo />
 </ErrorBoundary>
 ```
@@ -51,7 +53,7 @@ Toggle each section's failure independently. Check that:
 - One section failing doesn't affect the others
 - The error fallback matches the section's criticality
 - Clicking Retry works: uncheck the toggle (to "fix the bug"), then click Retry. The section should reappear.
-- Clicking Retry *without* unchecking the toggle re-throws immediately. That's correct. The underlying condition hasn't changed.
+- Clicking Retry _without_ unchecking the toggle re-throws immediately. That's correct. The underlying condition hasn't changed.
 
 ---
 

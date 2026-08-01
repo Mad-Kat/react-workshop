@@ -5,13 +5,6 @@
  * Mental model: Memoization is a performance optimization, not a correctness
  * tool. The rule: measure first, memoize second.
  *
- * >> INSTRUCTOR: React Compiler (v1.0, Oct 2025) auto-memoizes components and
- * >> hooks at build time — manual useMemo/useCallback/React.memo becomes
- * >> optional. The goal of this exercise shifts: understand WHY these patterns
- * >> are wrong (unnecessary work, broken deps, unstable references) rather
- * >> than just learning the correct memo syntax. The compiler fixes perf, but
- * >> these bugs still indicate confused thinking about React's render model.
- *
  * This file has six performance-related problems. Problems 1–5 are
  * memoization pitfalls — classify each: remove, fix, or move out.
  * Problem 6 is about useDeferredValue — a declarative alternative to
@@ -21,8 +14,6 @@
  * which components re-render and how long they take.
  *
  * Key reading: https://react.dev/reference/react/useMemo
- *
- * These are patterns found in our codebase.
  */
 
 import type { FunctionComponent } from "react";
@@ -75,8 +66,7 @@ export const RecipeFeed: FunctionComponent<{
   }, [displayMode]);
 
   // Problem 2: This useMemo isn't caching anything across renders. Why?
-  const formatDuration = (minutes: number) =>
-    `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
+  const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 
   const annotatedRecipes = useMemo(
     () =>
@@ -106,9 +96,7 @@ export const RecipeFeed: FunctionComponent<{
 
   return (
     <div>
-      <button
-        onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-      >
+      <button onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}>
         Sort {sortDirection === "asc" ? "↓" : "↑"}
       </button>
 
@@ -217,9 +205,7 @@ export const ItemList: FunctionComponent = () => {
           key={item.id}
           item={item}
           // Problem 5: memo is applied but cards still re-render. Why?
-          style={
-            index === 0 ? { border: "1px solid red" } : undefined
-          }
+          style={index === 0 ? { border: "1px solid red" } : undefined}
         />
       ))}
     </div>

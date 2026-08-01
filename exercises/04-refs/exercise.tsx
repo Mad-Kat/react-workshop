@@ -5,19 +5,12 @@
  * Mental model: Refs are a "secret pocket" — mutable, not tracked by React.
  * If a value doesn't need to trigger a re-render, it probably belongs in a ref.
  *
- * If you get stuck, open guide.md for step-by-step thinking.
- *
  * Key reading: https://react.dev/learn/referencing-values-with-refs
  */
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useState } from "react";
-import {
-  type StationStatus,
-  type WeatherReading,
-  fetchWeatherReading,
-  fakeSearch,
-} from "./api";
+import { type WeatherReading, fetchWeatherReading, fakeSearch } from "./api";
 
 // ---------------------------------------------------------------------------
 // Exercise A: Weather Station Poller
@@ -39,12 +32,8 @@ export function useWeatherStationPoller(stationId: string | null) {
   const [data, setData] = useState<WeatherReading | null>(null);
 
   const [isFetching, setIsFetching] = useState(false);
-  const [intervalId, setIntervalId] = useState<ReturnType<
-    typeof setInterval
-  > | null>(null);
-  const [timeoutId, setTimeoutId] = useState<ReturnType<
-    typeof setTimeout
-  > | null>(null);
+  const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [timeoutId, setTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const performFetch = useCallback(() => {
     if (isFetching || !stationId) {
@@ -97,17 +86,13 @@ export function useWeatherStationPoller(stationId: string | null) {
   // Visibility change handler
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (
-        document.visibilityState === "visible" &&
-        data?.status !== "OFFLINE"
-      ) {
+      if (document.visibilityState === "visible" && data?.status !== "OFFLINE") {
         performFetch();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [data?.status, performFetch]);
 
   return { data };
@@ -152,17 +137,8 @@ export const DebouncedSearch: FunctionComponent = () => {
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-
-  // This state is rendered — it's needed to trigger the re-render that
-  // shows the new results and the updated "previous search" label.
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-
-  // Is this rendered in JSX?
-  const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  // Is this value rendered? And if so, does it need to TRIGGER the render?
+  const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [previousSearchTerm, setPreviousSearchTerm] = useState("");
 
   useEffect(() => {
@@ -214,9 +190,7 @@ export const DebouncedSearch: FunctionComponent = () => {
         }}
       />
 
-      {previousSearchTerm && (
-        <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>
-      )}
+      {previousSearchTerm && <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>}
 
       {isSearching ? (
         <p>Searching...</p>

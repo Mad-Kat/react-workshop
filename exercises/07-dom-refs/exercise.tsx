@@ -39,11 +39,7 @@ export const FancyInput: FunctionComponent<{
   const [value, setValue] = useState("");
 
   return (
-    <input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      placeholder={placeholder}
-    />
+    <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} />
   );
 };
 
@@ -109,11 +105,7 @@ export const ScrollSafeInput: FunctionComponent<{
 
   return (
     <div ref={containerRef}>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} />
     </div>
   );
 };

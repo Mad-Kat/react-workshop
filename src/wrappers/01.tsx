@@ -42,7 +42,11 @@ const ClosuresExercise = () => {
     // Wait for the timeout to fire
     setTimeout(() => {
       console.log = origLog;
-      resultsRef.current = [...resultsRef.current, "--- Snippet 4: setTimeout snapshot ---", ...captured];
+      resultsRef.current = [
+        ...resultsRef.current,
+        "--- Snippet 4: setTimeout snapshot ---",
+        ...captured,
+      ];
       setResults([...resultsRef.current]);
     }, 1200);
   };
@@ -56,52 +60,96 @@ const ClosuresExercise = () => {
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
         <div>
-          <button onClick={() => runWithCapture("Snippet 1: basic capture", () => {
-            const log = createSnippet1();
-            log();
-          })}>
+          <button
+            onClick={() =>
+              runWithCapture("Snippet 1: basic capture", () => {
+                const log = createSnippet1();
+                log();
+              })
+            }
+          >
             Run Snippet 1
           </button>
-          <p style={{ fontSize: 12, color: "#999" }}>What does log() print?<br/>Hint: when is count actually read?</p>
+          <p style={{ fontSize: 12, color: "#999" }}>
+            What does log() print?
+            <br />
+            Hint: when is count actually read?
+          </p>
         </div>
 
         <div>
-          <button onClick={() => runWithCapture("Snippet 2: var in loop", () => {
-            const fns = createSnippet2();
-            fns.forEach(fn => fn());
-          })}>
+          <button
+            onClick={() =>
+              runWithCapture("Snippet 2: var in loop", () => {
+                const fns = createSnippet2();
+                fns.forEach((fn) => fn());
+              })
+            }
+          >
             Run Snippet 2
           </button>
-          <p style={{ fontSize: 12, color: "#999" }}>What does each fn() print?<br/>Hint: <code>var</code> is function-scoped.</p>
+          <p style={{ fontSize: 12, color: "#999" }}>
+            What does each fn() print?
+            <br />
+            Hint: <code>var</code> is function-scoped.
+          </p>
         </div>
 
         <div>
-          <button onClick={() => runWithCapture("Snippet 3: let in loop", () => {
-            const fns = createSnippet3();
-            fns.forEach(fn => fn());
-          })}>
+          <button
+            onClick={() =>
+              runWithCapture("Snippet 3: let in loop", () => {
+                const fns = createSnippet3();
+                fns.forEach((fn) => fn());
+              })
+            }
+          >
             Run Snippet 3
           </button>
-          <p style={{ fontSize: 12, color: "#999" }}>Same loop but with <code>let</code>.<br/>What changes?</p>
+          <p style={{ fontSize: 12, color: "#999" }}>
+            Same loop but with <code>let</code>.<br />
+            What changes?
+          </p>
         </div>
 
         <div>
-          <button onClick={runSnippet4}>
-            Run Snippet 4
-          </button>
-          <p style={{ fontSize: 12, color: "#999" }}>setTimeout fires after 1s.<br/>Hint: is currentValue a const or let?</p>
+          <button onClick={runSnippet4}>Run Snippet 4</button>
+          <p style={{ fontSize: 12, color: "#999" }}>
+            setTimeout fires after 1s.
+            <br />
+            Hint: is currentValue a const or let?
+          </p>
         </div>
       </div>
 
-      <div style={{ background: "#1e1e1e", color: "#d4d4d4", padding: 16, borderRadius: 8, fontFamily: "monospace", fontSize: 13, minHeight: 100, whiteSpace: "pre-wrap" }}>
+      <div
+        style={{
+          background: "#1e1e1e",
+          color: "#d4d4d4",
+          padding: 16,
+          borderRadius: 8,
+          fontFamily: "monospace",
+          fontSize: 13,
+          minHeight: 100,
+          whiteSpace: "pre-wrap",
+        }}
+      >
         {results.length === 0
           ? "// Output will appear here..."
           : results.map((line, i) => (
-              <div key={i} style={{ color: line.startsWith("---") ? "#569cd6" : "#d4d4d4" }}>{line}</div>
+              <div key={i} style={{ color: line.startsWith("---") ? "#569cd6" : "#d4d4d4" }}>
+                {line}
+              </div>
             ))}
       </div>
 
-      <button onClick={() => { resultsRef.current = []; setResults([]); }} style={{ marginTop: 8 }}>
+      <button
+        onClick={() => {
+          resultsRef.current = [];
+          setResults([]);
+        }}
+        style={{ marginTop: 8 }}
+      >
         Clear output
       </button>
     </div>

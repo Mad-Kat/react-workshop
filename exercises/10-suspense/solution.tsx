@@ -170,9 +170,7 @@ export const ProductPageWithSuspense: FunctionComponent = () => {
       <h1>Product Page</h1>
 
       {/* Product section: critical — show full error */}
-      <SimpleErrorBoundary
-        fallback={<div style={{ color: "red" }}>Failed to load product.</div>}
-      >
+      <SimpleErrorBoundary fallback={<div style={{ color: "red" }}>Failed to load product.</div>}>
         <Suspense fallback={<div>Loading product...</div>}>
           <ProductInfo />
         </Suspense>
@@ -193,11 +191,7 @@ export const ProductPageWithSuspense: FunctionComponent = () => {
        * one failing block doesn't hide the others.
        */}
       <SimpleErrorBoundary
-        fallback={
-          <div style={{ color: "#999", fontStyle: "italic" }}>
-            Reviews unavailable
-          </div>
-        }
+        fallback={<div style={{ color: "#999", fontStyle: "italic" }}>Reviews unavailable</div>}
       >
         <Suspense fallback={<div>Loading reviews...</div>}>
           <ReviewsList />
@@ -224,3 +218,10 @@ export const ProductPageWithSuspense: FunctionComponent = () => {
  * Real codebase reference:
  *   - segments/relay/src/data/lazyLoadQueryBoundary.tsx: Suspense + ErrorBoundary + ClientSideRender
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   use() and Suspense move loading and error branches out of the component
+//   and into boundaries: six state variables become zero.
+//   The ErrorBoundary goes outside the Suspense boundary, not inside it.
+// ---------------------------------------------------------------------------

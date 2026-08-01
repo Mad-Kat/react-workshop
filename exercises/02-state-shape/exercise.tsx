@@ -4,8 +4,6 @@
  *
  * Mental model: If you can compute it during render, don't put it in state.
  *
- * If you get stuck, open guide.md for step-by-step thinking.
- *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect
  */
 
@@ -49,32 +47,49 @@ export const WeatherStatusBadge: FunctionComponent<WeatherStatusBadgeProps> = ({
     if (badge !== "unknown") {
       setBadge("unknown");
     }
-    return <span>Station offline ({badge}) <RenderCount count={renderCount} /></span>;
+    return (
+      <span>
+        Station offline ({badge}) <RenderCount count={renderCount} />
+      </span>
+    );
   }
 
   if (!forecast) {
     if (badge !== "unknown") {
       setBadge("unknown");
     }
-    return <span>No forecast data ({badge}) <RenderCount count={renderCount} /></span>;
+    return (
+      <span>
+        No forecast data ({badge}) <RenderCount count={renderCount} />
+      </span>
+    );
   }
 
-  return <span>Current weather: {badge} <RenderCount count={renderCount} /></span>;
+  return (
+    <span>
+      Current weather: {badge} <RenderCount count={renderCount} />
+    </span>
+  );
 };
 
 // ---------------------------------------------------------------------------
 // Exercise B: Temperature Reading
 //
-// This component converts temperature when the unit toggles. It uses an
-// effect to detect the change and apply the conversion.
+// Two ways to change this component: type a reading into the input, or
+// toggle the unit. Typing touches the temperature alone. Toggling has to
+// convert the reading that is already there, so it needs to read the
+// temperature before overwriting it.
 //
-// Step 1: How many useState calls are there? Which ones change together?
-// Step 2: Can you change `unit` without also changing `temperature`?
-//         If they MUST change together, they belong in the same state update.
-// Step 3: What primitive lets you update two values atomically based on
-//         the current state? (Hint: it's like a state machine)
-// Step 4: After refactoring, what state variables can you delete entirely?
+// Step 1: How many useState calls are there? Which ones change together,
+//         and which one changes on its own?
+// Step 2: The toggle has to know the current temperature to convert it.
+//         What is that dependency doing to the shape of this code?
+// Step 3: What primitive updates several values at once, computed from the
+//         state you already have? (Hint: it's like a state machine)
+// Step 4: After refactoring, which state variables disappear entirely?
 // ---------------------------------------------------------------------------
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 export const TemperatureReading: FunctionComponent<{
   initialCelsius: number;
@@ -90,9 +105,9 @@ export const TemperatureReading: FunctionComponent<{
   useEffect(() => {
     if (unit !== prevUnit) {
       if (unit === "F") {
-        setTemperature((t) => t * (9 / 5) + 32);
+        setTemperature((t) => round1(t * (9 / 5) + 32));
       } else {
-        setTemperature((t) => (t - 32) * (5 / 9));
+        setTemperature((t) => round1((t - 32) * (5 / 9)));
       }
       setPrevUnit(unit);
     }
@@ -100,9 +115,13 @@ export const TemperatureReading: FunctionComponent<{
 
   return (
     <div>
-      <span>
-        {temperature.toFixed(1)}°{unit}
-      </span>
+      <input
+        type="number"
+        value={temperature}
+        onChange={(e) => setTemperature(Number(e.target.value) || 0)}
+        style={{ width: 80 }}
+      />
+      <span>°{unit} </span>
       <button onClick={() => setUnit(unit === "C" ? "F" : "C")}>
         Switch to °{unit === "C" ? "F" : "C"}
       </button>

@@ -168,9 +168,9 @@ Convert it to a ref. Instead of `setSearchCount(c => c + 1)`, write `searchCount
 This one IS displayed in JSX:
 
 ```tsx
-{previousSearchTerm && (
-  <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>
-)}
+{
+  previousSearchTerm && <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>;
+}
 ```
 
 So it seems like it needs to be state. But ask: does it need to be the **trigger** for the render?
@@ -187,13 +187,13 @@ useEffect(() => {
 }, [currentSearchTerm]);
 ```
 
-This runs *after* the render triggered by `setCurrentSearchTerm`. That means it's always one cycle late. The "previous" value is actually the "current" value from the render that just finished.
+This runs _after_ the render triggered by `setCurrentSearchTerm`. That means it's always one cycle late. The "previous" value is actually the "current" value from the render that just finished.
 
 With a ref, update it **synchronously** in the same callback, **before** calling `setCurrentSearchTerm`:
 
 ```tsx
-previousSearchTermRef.current = currentSearchTerm;  // capture "previous"
-setCurrentSearchTerm(term);                          // trigger render
+previousSearchTermRef.current = currentSearchTerm; // capture "previous"
+setCurrentSearchTerm(term); // trigger render
 ```
 
 At this point, `currentSearchTerm` still holds the old value (the one that's about to become "previous"). Assigning it to the ref captures it at exactly the right moment. Then `setCurrentSearchTerm` triggers a re-render. During that render, `previousSearchTermRef.current` holds the correct previous value and `currentSearchTerm` holds the new one.

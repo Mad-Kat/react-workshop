@@ -41,9 +41,7 @@ export const ResponsiveLayout: FunctionComponent = () => {
       <h2>Responsive Layout</h2>
       <p>Window width: {width}px</p>
       {isMobile ? (
-        <div style={{ background: "#e3f2fd", padding: 16 }}>
-          Mobile layout — stacked
-        </div>
+        <div style={{ background: "#e3f2fd", padding: 16 }}>Mobile layout — stacked</div>
       ) : (
         <div style={{ background: "#f3e5f5", padding: 16, display: "flex", gap: 16 }}>
           <div style={{ flex: 1 }}>Desktop column 1</div>
@@ -130,4 +128,3 @@ export const SSRExercises: FunctionComponent = () => {
     </div>
   );
 };
-

@@ -141,10 +141,10 @@ export const TodoListStep2UseOptimistic: FunctionComponent = () => {
   // ✅ Step 2: useOptimistic replaces the manual optimisticTodo state
   // While a transition is in flight, `optimisticTodos` shows the extra item.
   // When the transition ends (success or failure), it snaps back to `todos`.
-  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
-    todos,
-    (state, newTodo: Todo) => [...state, newTodo],
-  );
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(todos, (state, newTodo: Todo) => [
+    ...state,
+    newTodo,
+  ]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,10 +234,10 @@ export const TodoListStep3FormAction: FunctionComponent = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
-    todos,
-    (state, newTodo: Todo) => [...state, newTodo],
-  );
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(todos, (state, newTodo: Todo) => [
+    ...state,
+    newTodo,
+  ]);
 
   // ✅ Step 3: Async action function — receives FormData, runs in a transition
   // React calls this inside startTransition automatically when the form submits.
@@ -316,8 +316,8 @@ export const LikeButton: FunctionComponent = () => {
     <div>
       <h2>Step 4 — useActionState (sequential, no race conditions)</h2>
       <p>
-        Click rapidly: each like waits for the previous to resolve and gets the
-        correct previousCount. You will always land at the right number.
+        Click rapidly: each like waits for the previous to resolve and gets the correct
+        previousCount. You will always land at the right number.
       </p>
       {/* dispatch can be used directly as a form action */}
       <form action={dispatch}>
@@ -359,3 +359,10 @@ export const LikeButton: FunctionComponent = () => {
  *   - libraries/product-updates-notifications/src/productDetailPage/useSubscribeToPriceChange.tsx:
  *     manual optimistic pattern replaced by useOptimistic
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   Actions own the async lifecycle. useActionState and useTransition replace
+//   the pending/error/optimistic useState pile, and actions run sequentially,
+//   so there are no stale closures or races left to reason about.
+// ---------------------------------------------------------------------------

@@ -25,18 +25,18 @@ Your first instinct might be:
 ```tsx
 function ProductInfo() {
   const productPromise = fetchProduct(); // NEW promise every render!
-  const product = use(productPromise);   // suspends → React re-renders → new promise → ...
+  const product = use(productPromise); // suspends → React re-renders → new promise → ...
 }
 ```
 
-Think about what happens. `use()` sees a pending promise and suspends (throws). React shows the Suspense fallback. When it tries to re-render the component, the function body runs again. `fetchProduct()` creates a *new* promise. `use()` sees *another* pending promise and suspends again. This loops forever: render, new promise, suspend, render, new promise, suspend...
+Think about what happens. `use()` sees a pending promise and suspends (throws). React shows the Suspense fallback. When it tries to re-render the component, the function body runs again. `fetchProduct()` creates a _new_ promise. `use()` sees _another_ pending promise and suspends again. This loops forever: render, new promise, suspend, render, new promise, suspend...
 
 ### Step 4: So where should the promise live?
 
 Outside the component. Create it at module scope so it's created once and reused across renders:
 
 ```tsx
-const productPromise = fetchProduct();  // created once, reused across renders
+const productPromise = fetchProduct(); // created once, reused across renders
 ```
 
 This is exactly what frameworks like Relay do. The network request is kicked off when the route loads, and the same promise reference is reused on every render.
@@ -72,15 +72,19 @@ Wrap each data consumer in its own `<Suspense>` boundary. Separate boundaries me
 </Suspense>
 ```
 
-If you wrapped both in a single `<Suspense>`, the entire fallback would show until *both* promises resolve. Two boundaries give you progressive disclosure.
+If you wrapped both in a single `<Suspense>`, the entire fallback would show until _both_ promises resolve. Two boundaries give you progressive disclosure.
 
 ### Step 7: Where does the ErrorBoundary go?
 
 Outside the Suspense boundary:
 
 ```tsx
-<ErrorBoundary fallback={<p>Failed to load</p>}>  {/* catches rejected promises */}
-  <Suspense fallback={<p>Loading...</p>}>           {/* catches pending promises */}
+<ErrorBoundary fallback={<p>Failed to load</p>}>
+  {" "}
+  {/* catches rejected promises */}
+  <Suspense fallback={<p>Loading...</p>}>
+    {" "}
+    {/* catches pending promises */}
     <ProductInfo />
   </Suspense>
 </ErrorBoundary>

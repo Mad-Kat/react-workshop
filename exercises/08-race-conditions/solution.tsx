@@ -16,10 +16,7 @@ interface SearchResult {
   price: number;
 }
 
-const searchProducts = async (
-  query: string,
-  signal?: AbortSignal,
-): Promise<SearchResult[]> => {
+const searchProducts = async (query: string, signal?: AbortSignal): Promise<SearchResult[]> => {
   const delay = Math.floor(Math.random() * 450) + 50;
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(resolve, delay);
@@ -210,3 +207,10 @@ export const ProductSearchAbort: FunctionComponent = () => {
  *   - domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts: polling with cleanup
  *   - libraries/cart/src/sidebar/lazy/shoppingCartSidebarContent.tsx: Relay auto-management
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   A response can arrive after the component has moved on. Every async effect
+//   needs cleanup that invalidates the in-flight request: an ignore flag for
+//   most cases, AbortController when cancelling the request is worth it.
+// ---------------------------------------------------------------------------

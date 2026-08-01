@@ -37,10 +37,17 @@ You need two refs: one internal `useRef<HTMLInputElement>` for the actual DOM no
 ```tsx
 const inputRef = useRef<HTMLInputElement>(null);
 
-useImperativeHandle(ref, () => ({
-  focus: () => inputRef.current?.focus(),
-  clear: () => { setValue(""); inputRef.current?.focus(); },
-}), []);
+useImperativeHandle(
+  ref,
+  () => ({
+    focus: () => inputRef.current?.focus(),
+    clear: () => {
+      setValue("");
+      inputRef.current?.focus();
+    },
+  }),
+  [],
+);
 ```
 
 The parent calls `ref.current.focus()`, and `useImperativeHandle` routes that to `inputRef.current.focus()`. The parent never sees the underlying `<input>` element.

@@ -5,8 +5,6 @@
  * Mental model: Setting state doesn't change the variable — it requests a
  * re-render with a new value. The current render always sees a snapshot.
  *
- * If you get stuck, open guide.md for step-by-step thinking.
- *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect#resetting-all-state-when-a-prop-changes
  */
 
@@ -42,11 +40,8 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   placeholder,
 }) => {
   const renderCount = useRenderCount();
-  const [inputValue, setInputValue] = useState<string>(
-    fontSize !== null ? String(fontSize) : "",
-  );
+  const [inputValue, setInputValue] = useState<string>(fontSize !== null ? String(fontSize) : "");
 
-  // Anti-pattern: effect-based reset
   useEffect(() => {
     setInputValue(fontSize !== null ? String(fontSize) : "");
   }, [fontSize]);
@@ -73,7 +68,7 @@ export const FontSizePicker: FunctionComponent<FontSizePickerProps> = ({
   );
 };
 
-// Parent that uses FontSizePicker — this is where you might apply the key trick
+// Parent that uses FontSizePicker (you might want to change this too)
 export const ThemeEditor: FunctionComponent = () => {
   const [selectedFontSize, setSelectedFontSize] = useState<number | null>(14);
 
@@ -87,10 +82,7 @@ export const ThemeEditor: FunctionComponent = () => {
     <div>
       <h2>Font size</h2>
       {presets.map((preset) => (
-        <button
-          key={preset.id}
-          onClick={() => setSelectedFontSize(preset.size)}
-        >
+        <button key={preset.id} onClick={() => setSelectedFontSize(preset.size)}>
           {preset.label}
         </button>
       ))}
@@ -126,53 +118,46 @@ interface NotificationSettingsProps {
   onClose: () => void;
 }
 
-export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsProps> =
-  ({ preferences, updatePreferences, onClose }) => {
-    const [state, setState] = useState<NotificationPreferences>(preferences);
+export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsProps> = ({
+  preferences,
+  updatePreferences,
+  onClose,
+}) => {
+  const [state, setState] = useState<NotificationPreferences>(preferences);
 
-    // Anti-pattern: effect-based reset. If the user is editing toggles
-    // and preferences changes externally, their changes are silently wiped.
-    useEffect(() => {
-      setState(preferences);
-    }, [preferences]);
+  useEffect(() => {
+    setState(preferences);
+  }, [preferences]);
 
-    const preferencesHaveChanged =
-      JSON.stringify(preferences) !== JSON.stringify(state);
+  const preferencesHaveChanged = JSON.stringify(preferences) !== JSON.stringify(state);
 
-    const toggleChannel = (channel: keyof NotificationPreferences) => {
-      setState({ ...state, [channel]: !state[channel] });
-    };
-
-    const saveSettings = () => {
-      updatePreferences(state);
-      onClose();
-    };
-
-    return (
-      <div>
-        <h3>Notification Settings</h3>
-        {(Object.keys(state) as Array<keyof NotificationPreferences>).map(
-          (channel) => (
-            <label key={channel}>
-              <input
-                type="checkbox"
-                checked={state[channel]}
-                onChange={() => toggleChannel(channel)}
-              />
-              {channel}
-            </label>
-          ),
-        )}
-        <button onClick={saveSettings} disabled={!preferencesHaveChanged}>
-          Save
-        </button>
-        <button onClick={onClose}>Cancel</button>
-      </div>
-    );
+  const toggleChannel = (channel: keyof NotificationPreferences) => {
+    setState({ ...state, [channel]: !state[channel] });
   };
 
-// Parent that uses NotificationSettingsDialog
-// Step 3 hint: where should the key go?
+  const saveSettings = () => {
+    updatePreferences(state);
+    onClose();
+  };
+
+  return (
+    <div>
+      <h3>Notification Settings</h3>
+      {(Object.keys(state) as Array<keyof NotificationPreferences>).map((channel) => (
+        <label key={channel}>
+          <input type="checkbox" checked={state[channel]} onChange={() => toggleChannel(channel)} />
+          {channel}
+        </label>
+      ))}
+      <button onClick={saveSettings} disabled={!preferencesHaveChanged}>
+        Save
+      </button>
+      <button onClick={onClose}>Cancel</button>
+    </div>
+  );
+};
+
+// Parent that uses NotificationSettingsDialog (you might need to change this too)
 export const NotificationSettingsParent: FunctionComponent = () => {
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     email: true,
@@ -188,12 +173,8 @@ export const NotificationSettingsParent: FunctionComponent = () => {
 
   return (
     <div>
-      <button onClick={simulateExternalUpdate}>
-        Simulate external update
-      </button>
-      <button onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? "Close" : "Open"} dialog
-      </button>
+      <button onClick={simulateExternalUpdate}>Simulate external update</button>
+      <button onClick={() => setIsOpen(!isOpen)}>{isOpen ? "Close" : "Open"} dialog</button>
       {isOpen && (
         <NotificationSettingsDialog
           preferences={preferences}
@@ -204,4 +185,3 @@ export const NotificationSettingsParent: FunctionComponent = () => {
     </div>
   );
 };
-

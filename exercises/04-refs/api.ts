@@ -7,9 +7,7 @@ export interface WeatherReading {
 }
 
 // Simulates a fetch call
-export const fetchWeatherReading = (
-  stationId: string,
-): Promise<WeatherReading> =>
+export const fetchWeatherReading = (stationId: string): Promise<WeatherReading> =>
   new Promise((resolve, reject) => {
     const shouldFail = Math.random() < 0.1;
     setTimeout(() => {

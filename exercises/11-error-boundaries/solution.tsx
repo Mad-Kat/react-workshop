@@ -103,16 +103,28 @@ export const ProductDetailPage: FunctionComponent = () => {
       {/* Failure toggles for testing */}
       <div style={{ marginBottom: 16, padding: 8, background: "#f5f5f5" }}>
         <label>
-          <input type="checkbox" checked={productFails} onChange={() => setProductFails(!productFails)} />
-          {" "}Product fails
+          <input
+            type="checkbox"
+            checked={productFails}
+            onChange={() => setProductFails(!productFails)}
+          />{" "}
+          Product fails
         </label>
         <label style={{ marginLeft: 16 }}>
-          <input type="checkbox" checked={reviewsFails} onChange={() => setReviewsFails(!reviewsFails)} />
-          {" "}Reviews fail
+          <input
+            type="checkbox"
+            checked={reviewsFails}
+            onChange={() => setReviewsFails(!reviewsFails)}
+          />{" "}
+          Reviews fail
         </label>
         <label style={{ marginLeft: 16 }}>
-          <input type="checkbox" checked={recommendationsFails} onChange={() => setRecommendationsFails(!recommendationsFails)} />
-          {" "}Recommendations fail
+          <input
+            type="checkbox"
+            checked={recommendationsFails}
+            onChange={() => setRecommendationsFails(!recommendationsFails)}
+          />{" "}
+          Recommendations fail
         </label>
       </div>
 
@@ -136,7 +148,9 @@ export const ProductDetailPage: FunctionComponent = () => {
         fallback={({ retry }) => (
           <div style={{ padding: 16, border: "1px solid #ddd", marginBottom: 16, color: "#999" }}>
             <h3>Reviews unavailable</h3>
-            <button onClick={retry} style={{ color: "#999" }}>Try again</button>
+            <button onClick={retry} style={{ color: "#999" }}>
+              Try again
+            </button>
           </div>
         )}
       >
@@ -144,10 +158,7 @@ export const ProductDetailPage: FunctionComponent = () => {
       </ErrorBoundary>
 
       {/* Non-critical section: silently hidden on error */}
-      <ErrorBoundary
-        name="Recommendations"
-        fallback={null}
-      >
+      <ErrorBoundary name="Recommendations" fallback={null}>
         <RecommendationsSection shouldFail={recommendationsFails} />
       </ErrorBoundary>
     </div>
@@ -182,3 +193,10 @@ export const ProductDetailPage: FunctionComponent = () => {
  *   - segments/error-boundary/src/errorBoundary.tsx: symbol-based handler matching
  *   - segments/error-boundary/src/useErrorHandler.ts: targeted error handlers
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   Error boundaries catch errors thrown while rendering. Not event handlers,
+//   not async code, not SSR — those need try/catch where they happen.
+//   Scope a boundary per section so one failure doesn't take the page with it.
+// ---------------------------------------------------------------------------

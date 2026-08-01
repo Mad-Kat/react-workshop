@@ -33,10 +33,7 @@ const subscribeToLiveRateUpdates = (
 export const RoomBookingPanel: FunctionComponent<{
   room: Room;
   onConfirm?: (data: { roomId: string; guests: number; totalRate: number }) => void;
-}> = ({
-  room,
-  onConfirm,
-}) => {
+}> = ({ room, onConfirm }) => {
   const renderCount = useRenderCount();
 
   const [guests, setGuests] = useState(1);
@@ -50,8 +47,7 @@ export const RoomBookingPanel: FunctionComponent<{
   // are responses to a user action. They belong at the call site (the click
   // handler), not in an effect watching a boolean flag.
 
-  // Effect C → LEGITIMATE EFFECT: synchronizes with an external occupancy
-  // score subscription. Correct — keep it.
+  // Effect C → LEGITIMATE EFFECT: synchronizes with an external occupancy score subscription.
   useEffect(() => {
     const unsubscribe = subscribeToLiveRateUpdates(room.id, (newScore) => {
       setLiveRate(newScore);
@@ -60,7 +56,6 @@ export const RoomBookingPanel: FunctionComponent<{
   }, [room.id]);
 
   // Effect D → LEGITIMATE EFFECT: synchronizes with the browser keyboard API.
-  // Correct — keep it.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -100,7 +95,9 @@ export const RoomBookingPanel: FunctionComponent<{
   );
 };
 
-/**
- * Real codebase reference:
- *   - domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts: legitimate polling + visibility effects
- */
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   An effect is for synchronizing with something outside React.
+//   If the value is computable from what you already have, derive it during
+//   render. If it happens because the user did something, put it in the handler.
+// ---------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 
 You see three `useState` calls, four `useEffect` calls, and a click handler. That is a lot of effects for a component this size. Two of them don't need to be effects at all. But how do you tell which ones?
 
-Let's look at each one and ask: what is this effect actually doing? And could we express the same thing *without* an effect?
+Let's look at each one and ask: what is this effect actually doing? And could we express the same thing _without_ an effect?
 
 ### Effect A: What does this effect do?
 
@@ -74,7 +74,7 @@ Delete the `confirmed` state and the effect. The handler does the work directly.
 
 Good question. Maybe analytics is optional. Maybe the parent needs to do something the component shouldn't know about. That's exactly what the `onConfirm` callback is for. The component calls it; the parent decides what to do.
 
-The key insight is that the *response to a user action* belongs at the call site of that action (the handler), not in an effect watching a flag. Whether the handler calls `trackEvent`, `onConfirm`, both, or neither is a composition decision. The effect-with-a-flag pattern doesn't make this any more flexible. It just adds indirection and an extra render cycle.
+The key insight is that the _response to a user action_ belongs at the call site of that action (the handler), not in an effect watching a flag. Whether the handler calls `trackEvent`, `onConfirm`, both, or neither is a composition decision. The effect-with-a-flag pattern doesn't make this any more flexible. It just adds indirection and an extra render cycle.
 
 ### Step 5b: "What if the caller and the responder are in completely different parts of the tree?"
 
@@ -86,7 +86,7 @@ The answer is still not an effect watching a flag. The options are:
 - **Use a context that provides a callback.** An analytics provider wraps a section of the tree. The component calls `useAnalytics().track(...)` in its handler. The provider decides what to do. The call is still synchronous with the user action.
 - **Use a shared event bus or store action.** Something like a Zustand store action or a custom EventEmitter. The handler dispatches an event; a listener elsewhere reacts. This is explicit pub/sub, not a hidden reactive chain through React state.
 
-All of these preserve the principle: the user action triggers a synchronous call chain. The work happens because someone *called a function*, not because a state variable changed and an effect noticed. That distinction matters because effects run after render, can be batched or deferred, and create invisible dependencies. A function call is immediate and traceable.
+All of these preserve the principle: the user action triggers a synchronous call chain. The work happens because someone _called a function_, not because a state variable changed and an effect noticed. That distinction matters because effects run after render, can be batched or deferred, and create invisible dependencies. A function call is immediate and traceable.
 
 ### Step 5c: "What about impression tracking?"
 
@@ -113,7 +113,7 @@ useEffect(() => {
 
 This is the same category as Effects C and D. The external system is the browser's IntersectionObserver API. The effect sets up the observer, and the cleanup tears it down. No flag state, no indirection.
 
-The rule is: if there is a user action that causes the work, use the handler. If the work is triggered by something the component *observes from an external system* (visibility, resize, a subscription), that is what effects are for.
+The rule is: if there is a user action that causes the work, use the handler. If the work is triggered by something the component _observes from an external system_ (visibility, resize, a subscription), that is what effects are for.
 
 ### Effect C: What does this effect do?
 

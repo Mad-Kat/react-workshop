@@ -8,7 +8,7 @@ Write the simplest possible version: a `useEffect` that calls `searchProducts(qu
 
 ```tsx
 useEffect(() => {
-  searchProducts(query).then(data => {
+  searchProducts(query).then((data) => {
     setResults(data);
     setIsLoading(false);
   });
@@ -32,7 +32,7 @@ Here's what happens in order:
 2. React runs the **new** effect for `"sho"`, which fires a fetch
 3. But the fetch for `"sh"` is still in flight. Its `.then()` callback will fire whenever the response arrives.
 
-The API has random latency (50 to 500ms). So the `"sh"` response might arrive *after* the `"sho"` response. When it does, its `.then()` calls `setResults` with stale data. The newer result gets overwritten by an older one.
+The API has random latency (50 to 500ms). So the `"sh"` response might arrive _after_ the `"sho"` response. When it does, its `.then()` calls `setResults` with stale data. The newer result gets overwritten by an older one.
 
 ### Step 3: How do you tell the old callback "you're stale, don't update state"?
 
@@ -44,17 +44,19 @@ A local `let ignore = false` variable does the job. The cleanup sets it to `true
 useEffect(() => {
   let ignore = false;
 
-  fetchData(query).then(data => {
-    if (!ignore) setResults(data);  // only update if still current
+  fetchData(query).then((data) => {
+    if (!ignore) setResults(data); // only update if still current
   });
 
-  return () => { ignore = true; };  // mark this effect as stale
+  return () => {
+    ignore = true;
+  }; // mark this effect as stale
 }, [query]);
 ```
 
 ### Step 4: Why does this actually work?
 
-Each effect invocation creates its own `ignore` variable via **closure** (Exercise 01). The cleanup sets *that specific* `ignore` to true, so the corresponding `.then()` checks *its own* `ignore`. They don't share a single flag; each render cycle has its own.
+Each effect invocation creates its own `ignore` variable via **closure** (Exercise 01). The cleanup sets _that specific_ `ignore` to true, so the corresponding `.then()` checks _its own_ `ignore`. They don't share a single flag; each render cycle has its own.
 
 ### Step 5: Verify
 
@@ -75,12 +77,12 @@ useEffect(() => {
   const controller = new AbortController();
 
   fetchData(query, controller.signal)
-    .then(data => setResults(data))
-    .catch(err => {
-      if (err.name === "AbortError") return;  // expected, not a bug
+    .then((data) => setResults(data))
+    .catch((err) => {
+      if (err.name === "AbortError") return; // expected, not a bug
     });
 
-  return () => controller.abort();  // actually cancel the request
+  return () => controller.abort(); // actually cancel the request
 }, [query]);
 ```
 
@@ -90,12 +92,12 @@ When you call `controller.abort()`, the promise rejects with a `DOMException` na
 
 ### Step 3: When would you pick one over the other?
 
-| | Ignore flag | AbortController |
-|---|---|---|
-| Complexity | Simple | More code (error handling) |
-| Network | Request completes, result discarded | Request cancelled (saves bandwidth) |
-| API support | Works with any Promise | Needs signal support |
-| When to use | Most cases | Real HTTP requests in production |
+|             | Ignore flag                         | AbortController                     |
+| ----------- | ----------------------------------- | ----------------------------------- |
+| Complexity  | Simple                              | More code (error handling)          |
+| Network     | Request completes, result discarded | Request cancelled (saves bandwidth) |
+| API support | Works with any Promise              | Needs signal support                |
+| When to use | Most cases                          | Real HTTP requests in production    |
 
 ### Edge case: empty query
 

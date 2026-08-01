@@ -29,10 +29,7 @@ interface SearchResult {
 
 // Simulates an API with random latency (50-500ms).
 // Accepts an optional AbortSignal for cancellation.
-const searchProducts = async (
-  query: string,
-  signal?: AbortSignal,
-): Promise<SearchResult[]> => {
+const searchProducts = async (query: string, signal?: AbortSignal): Promise<SearchResult[]> => {
   const delay = Math.floor(Math.random() * 450) + 50;
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(resolve, delay);

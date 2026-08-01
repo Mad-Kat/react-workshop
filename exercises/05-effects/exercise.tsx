@@ -5,8 +5,6 @@
  * Mental model: An Effect synchronizes React with something EXTERNAL.
  * If there's no external system involved, it's not an effect.
  *
- * If you get stuck, open guide.md for the decision tree.
- *
  * Key reading: https://react.dev/learn/you-might-not-need-an-effect
  */
 
@@ -53,10 +51,7 @@ const subscribeToLiveRateUpdates = (
 export const RoomBookingPanel: FunctionComponent<{
   room: Room;
   onConfirm?: (data: { roomId: string; guests: number; totalRate: number }) => void;
-}> = ({
-  room,
-  onConfirm,
-}) => {
+}> = ({ room, onConfirm }) => {
   const renderCount = useRenderCount();
 
   const [guests, setGuests] = useState(1);

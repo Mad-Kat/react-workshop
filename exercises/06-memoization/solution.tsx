@@ -36,15 +36,12 @@ const RowView: FunctionComponent<{ recipe: Recipe }> = ({ recipe }) => (
 
 // Fix 2 + Fix 4: move pure utilities outside the component
 // They don't read any props or state — they belong at module scope
-const formatDuration = (minutes: number) =>
-  `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
+const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 
 // Fix 4: extract two module-level comparators and select via a ternary inside
 // the component. No useCallback needed — a plain ternary is zero-cost.
-const sortAsc = (a: Recipe, b: Recipe) =>
-  a.durationMinutes - b.durationMinutes;
-const sortDesc = (a: Recipe, b: Recipe) =>
-  b.durationMinutes - a.durationMinutes;
+const sortAsc = (a: Recipe, b: Recipe) => a.durationMinutes - b.durationMinutes;
+const sortDesc = (a: Recipe, b: Recipe) => b.durationMinutes - a.durationMinutes;
 
 export const RecipeFeed: FunctionComponent<{
   recipes: Recipe[];
@@ -72,9 +69,7 @@ export const RecipeFeed: FunctionComponent<{
 
   return (
     <div>
-      <button
-        onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-      >
+      <button onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}>
         Sort {sortDirection === "asc" ? "↓" : "↑"}
       </button>
 
@@ -178,43 +173,9 @@ export const ItemList: FunctionComponent = () => {
   );
 };
 
-/**
- * Summary of fixes:
- *
- * 1. useMemo on ternary → removed. A ternary returning a constant component
- *    reference is zero-cost. useMemo adds overhead for no benefit.
- *
- * 2. useMemo with unstable dep → removed. `formatDuration` was recreated
- *    every render, so the memo never cached. Moved the function outside.
- *
- * 3. useMemo wrapping Boolean() → removed. `Boolean(x)` is the cheapest
- *    possible computation — memoizing it costs more than computing it.
- *
- * 4. useCallback with state dependency → restructured. Instead of capturing
- *    `sortDirection` inside a memoized callback, extract two module-level
- *    comparators and select between them with a ternary. The ternary itself
- *    is trivial; no memoization required.
- *
- * 5. React.memo trap → inline object extracted to a module-level constant.
- *    React.memo uses shallow equality on props. An inline object literal is
- *    a new reference every render, so memo never skips re-renders for that
- *    prop. Always hoist stable objects/arrays/functions outside the component
- *    (or use useMemo/useCallback when they depend on props/state).
- *
- * 6. useDeferredValue → wrap the search term so the input stays responsive.
- *    React renders the old deferred value immediately (keeping the input
- *    snappy), then re-renders with the new value at lower priority. If new
- *    input arrives before the deferred render finishes, React abandons it —
- *    no wasted work, no input lag. This is the declarative alternative to
- *    manual debouncing.
- *
- * When IS memoization correct?
- * - useMemo on a context value to prevent all consumers re-rendering
- * - useCallback on a function passed to React.memo'd children
- * - React.memo on a genuinely expensive component with stable props
- * - useMemo on genuinely expensive computations (1000+ items, profiler confirms)
- *
- * Real codebase references:
- *   - libraries/product-list/src/productListSerp.tsx: cheap ternary in useMemo
- *   - domains/product-detail/src/blocks/lib/expandableContentWrapper.tsx: incomplete useCallback deps
- */
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   Memoization is a performance tool, not a correctness tool. A memo that
+//   doesn't prevent a re-render is pure cost: the dependency has to be stable
+//   and the child has to be genuinely expensive. Measure first.
+// ---------------------------------------------------------------------------

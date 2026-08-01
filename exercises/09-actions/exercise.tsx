@@ -87,9 +87,7 @@ export const TodoListManual: FunctionComponent = () => {
   };
 
   // Build the display list: confirmed todos + optimistic item if pending
-  const displayedTodos = optimisticTodo
-    ? [...todos, optimisticTodo]
-    : todos;
+  const displayedTodos = optimisticTodo ? [...todos, optimisticTodo] : todos;
 
   return (
     <div>
@@ -107,18 +105,11 @@ export const TodoListManual: FunctionComponent = () => {
         </button>
       </form>
 
-      {error && (
-        <p style={{ color: "red" }}>
-          {error}
-        </p>
-      )}
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <ul>
         {displayedTodos.map((todo) => (
-          <li
-            key={todo.id}
-            style={{ opacity: todo.id === "optimistic" ? 0.5 : 1 }}
-          >
+          <li key={todo.id} style={{ opacity: todo.id === "optimistic" ? 0.5 : 1 }}>
             {todo.text}
             {todo.id === "optimistic" && " (saving...)"}
           </li>
@@ -126,8 +117,8 @@ export const TodoListManual: FunctionComponent = () => {
       </ul>
 
       <p style={{ fontSize: 12, color: "#999" }}>
-        Count the useState calls just for async state: isPending, error,
-        optimisticTodo — plus the manual cleanup in every branch.
+        Count the useState calls just for async state: isPending, error, optimisticTodo — plus the
+        manual cleanup in every branch.
       </p>
     </div>
   );
@@ -182,9 +173,7 @@ export const TodoListWithActions: FunctionComponent = () => {
       {/* TODO: Convert form to use action prop instead of onSubmit */}
       <form onSubmit={(e) => e.preventDefault()}>
         <input name="text" placeholder="Add a todo..." />
-        <button type="submit">
-          Add
-        </button>
+        <button type="submit">Add</button>
       </form>
       <ul>
         {todos.map((todo) => (
@@ -249,9 +238,9 @@ export const LikeButton: FunctionComponent = () => {
     <div>
       <h2>Exercise C — useActionState</h2>
       <p>
-        Problem: click the button 3 times quickly. Each click fires
-        fakeLikeApi with the SAME currentCount (42) because React batches
-        renders but the state snapshot is stale. You end up with 43, not 45.
+        Problem: click the button 3 times quickly. Each click fires fakeLikeApi with the SAME
+        currentCount (42) because React batches renders but the state snapshot is stale. You end up
+        with 43, not 45.
       </p>
       {/* TODO: Convert to form with useActionState dispatch as action */}
       <button onClick={handleLike} disabled={isPending}>

@@ -126,16 +126,28 @@ export const ProductDetailPage: FunctionComponent = () => {
       {/* Failure toggles for testing */}
       <div style={{ marginBottom: 16, padding: 8, background: "#f5f5f5" }}>
         <label>
-          <input type="checkbox" checked={productFails} onChange={() => setProductFails(!productFails)} />
-          {" "}Product fails
+          <input
+            type="checkbox"
+            checked={productFails}
+            onChange={() => setProductFails(!productFails)}
+          />{" "}
+          Product fails
         </label>
         <label style={{ marginLeft: 16 }}>
-          <input type="checkbox" checked={reviewsFails} onChange={() => setReviewsFails(!reviewsFails)} />
-          {" "}Reviews fail
+          <input
+            type="checkbox"
+            checked={reviewsFails}
+            onChange={() => setReviewsFails(!reviewsFails)}
+          />{" "}
+          Reviews fail
         </label>
         <label style={{ marginLeft: 16 }}>
-          <input type="checkbox" checked={recommendationsFails} onChange={() => setRecommendationsFails(!recommendationsFails)} />
-          {" "}Recommendations fail
+          <input
+            type="checkbox"
+            checked={recommendationsFails}
+            onChange={() => setRecommendationsFails(!recommendationsFails)}
+          />{" "}
+          Recommendations fail
         </label>
       </div>
 

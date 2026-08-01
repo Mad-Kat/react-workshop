@@ -72,7 +72,7 @@ Run it.
 
 ### Step 7: Why does `let` fix it?
 
-`let` is **block-scoped**. JavaScript creates a *new* `i` binding for each iteration of the loop. Each closure captures its own `i`, frozen at the value for that iteration.
+`let` is **block-scoped**. JavaScript creates a _new_ `i` binding for each iteration of the loop. Each closure captures its own `i`, frozen at the value for that iteration.
 
 ### Step 8: So what does React rendering have in common with a `let` loop?
 
@@ -129,12 +129,12 @@ But if you use `useRef`, you're back to the mutable `let` behavior because `ref.
 
 The snippets above demonstrate one principle: **a closure sees whatever the binding holds when it executes, not when it was created.** The outcome depends on how many bindings exist and whether they can be reassigned.
 
-| Scenario | How many bindings? | Can it change? | Closure sees... |
-|---|---|---|---|
-| `let` in function body, mutated later | One | Yes | The latest value |
-| `var` in a loop | One (function-scoped) | Yes | The final value (bug) |
-| `let` in a loop | One per iteration (block-scoped) | No* | Each iteration's value |
-| `const` (anywhere) | One per scope | No | The value it was initialized with |
+| Scenario                              | How many bindings?               | Can it change? | Closure sees...                   |
+| ------------------------------------- | -------------------------------- | -------------- | --------------------------------- |
+| `let` in function body, mutated later | One                              | Yes            | The latest value                  |
+| `var` in a loop                       | One (function-scoped)            | Yes            | The final value (bug)             |
+| `let` in a loop                       | One per iteration (block-scoped) | No*            | Each iteration's value            |
+| `const` (anywhere)                    | One per scope                    | No             | The value it was initialized with |
 
 *Technically `let` can be reassigned, but the loop creates a fresh binding each iteration, so within each closure's scope it effectively doesn't change.
 
@@ -147,8 +147,8 @@ The snippets above demonstrate one principle: **a closure sees whatever the bind
 ### Start with Comparisons 1 and 2
 
 ```js
-"hello" === "hello"  // ?
-42 === 42            // ?
+"hello" === "hello"; // ?
+42 === 42; // ?
 ```
 
 ### Step 1: What do you expect?
@@ -183,7 +183,7 @@ Think of it like two identical houses on different streets. Same blueprint, diff
 ```js
 const a = { x: 1 };
 const b = a;
-a === b  // ?
+a === b; // ?
 ```
 
 ### Step 4: What changes when you assign instead of creating?
@@ -199,7 +199,7 @@ Run it. This one is `true`.
 ```js
 const fn1 = () => 42;
 const fn2 = () => 42;
-fn1 === fn2  // ?
+fn1 === fn2; // ?
 ```
 
 ### Step 5: Functions look identical. Equal?
@@ -226,7 +226,7 @@ This is `false`. Same content does not mean same reference. This is exactly why 
 
 ```js
 const obj = { x: 1 };
-JSON.stringify(obj) === JSON.stringify(obj)  // ?
+JSON.stringify(obj) === JSON.stringify(obj); // ?
 ```
 
 ### Step 7: Why is this one `true`?
@@ -254,6 +254,7 @@ function MyComponent() {
 ```
 
 Solutions you'll learn in later exercises:
+
 - **Exercise 04 (Refs):** `useRef` for values that shouldn't trigger re-renders
 - **Exercise 06 (Memoization):** `useMemo` / `useCallback` to preserve references
 - **Exercise 06 (Problem 4):** Extract pure functions to module scope for free stability

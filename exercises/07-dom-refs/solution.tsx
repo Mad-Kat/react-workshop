@@ -130,17 +130,13 @@ export const ScrollSafeInput: FunctionComponent<{
 
   return (
     <div ref={containerRef}>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
+      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} />
     </div>
   );
 };
 
 /**
- * Key takeaways:
+ * Notes on the APIs used here:
  *
  * 1. ref as a regular prop (React 19+): no more forwardRef wrapper.
  *    Old: const FancyInput = forwardRef((props, ref) => { ... })
@@ -164,3 +160,10 @@ export const ScrollSafeInput: FunctionComponent<{
  *   - libraries/community-comment-form/src/communityCommentForm.tsx: forwardRef + useImperativeHandle (legacy)
  *   - blocks/form/src/components/inputField/inputField.tsx: ref callback for wheel event
  */
+
+// ---------------------------------------------------------------------------
+// Key takeaway
+//   Refs reach the DOM; useImperativeHandle decides how much of it the
+//   parent gets. Read and mutate in event handlers and effects, never
+//   during render — and reach for useLayoutEffect only to kill a flash.
+// ---------------------------------------------------------------------------
