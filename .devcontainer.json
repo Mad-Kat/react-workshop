@@ -1,0 +1,15 @@
+{
+  "name": "React Workshop",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "npm install",
+  "forwardPorts": [5173],
+  "customizations": {
+    "vscode": {
+      "extensions": ["oxc.oxc-vscode"],
+      "settings": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}
