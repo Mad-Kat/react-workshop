@@ -5,7 +5,11 @@
   "forwardPorts": [5173],
   "customizations": {
     "vscode": {
-      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+      "extensions": ["oxc.oxc-vscode"],
+      "settings": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true
+      }
     }
   }
 }
