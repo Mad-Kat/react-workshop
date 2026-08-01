@@ -8,7 +8,7 @@ Internal workshop for medior engineers who work in this codebase. They know Reac
 
 > **This is the `dev` branch, the instructor's copy, with all 12 exercises and solutions.**
 > Participants follow `main`, which has separate history and only contains released material.
-> Release with `scripts/publish.sh NN` at the start of a session and `scripts/publish.sh NN --reveal` after it.
+> Release with `node scripts/publish.ts NN` at the start of a session and `node scripts/publish.ts NN --reveal` after it.
 
 **Stack context:** Next.js Pages Router, Relay, next-yak, Vitest. Exercises reference real packages (`@segments/relay`, `@blocks/lazy`, `@segments/error-boundary`, etc.) so participants recognize patterns in their daily work.
 
