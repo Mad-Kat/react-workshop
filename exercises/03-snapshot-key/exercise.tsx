@@ -123,6 +123,7 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
   updatePreferences,
   onClose,
 }) => {
+  const renderCount = useRenderCount();
   const [state, setState] = useState<NotificationPreferences>(preferences);
 
   useEffect(() => {
@@ -153,6 +154,7 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
         Save
       </button>
       <button onClick={onClose}>Cancel</button>
+      <RenderCount count={renderCount} />
     </div>
   );
 };
