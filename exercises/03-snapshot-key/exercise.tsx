@@ -25,6 +25,9 @@ import { RenderCount } from "../RenderCount";
 //
 // Find the bug. Fix it. Then clean up whatever becomes unnecessary.
 // The counter tells you when you've got it.
+//
+// Disclaimer: The intended solution changes the input focus behavior.
+// So don't worry if the input loses focus when you click a preset.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
