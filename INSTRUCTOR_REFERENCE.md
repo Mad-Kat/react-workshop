@@ -49,15 +49,17 @@ Also referenced: `segments/carousel-solo-slide/src/carousel.tsx` (lines 31–49)
 
 ## Exercise 04: Refs — Non-rendering Values
 
-| Exercise                   | Anti-Pattern                                                                                      | Original File                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| A — Weather Station Poller | isFetching in state (should be ref), timer IDs in state                                           | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (lines 63–101) |
-| B — Debounced Search       | previousSearchTerm tracked via effect (one render behind), timerId in state, searchCount in state | Composite pattern from multiple files                                             |
+| Exercise                   | Anti-Pattern                                                                                                                    | Original File                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| A — Weather Station Poller | isFetching and timer IDs in state; callback identities cascade through the effect, so the interval is rebuilt twice per request | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (lines 63–101) |
+| B — Debounced Search       | previousSearchTerm synced via effect (copies the _current_ term, so the label is wrong), timerId and searchCount in state       | Composite pattern from multiple files                                             |
 
 Also referenced:
 
 - `libraries/product-updates-notifications/src/productDetailPage/useSubscribeToPriceChange.tsx` (lines 58–73) — didRetryRef guard
 - `domains/spending/src/spending.tsx` (lines 140–143) — refetchVariablesRef, hasRestoredPeriodId
+
+**Note:** First exercise in the "problem + expected behaviour" format: the header states what is observably wrong and a `Done when:` list, no numbered steps, and code comments only state intent. Instruments: `renders` on both components, `requests sent` / `intervals started` from `api.ts` in the wrapper, "Take station offline" / "Restart station" to make the OFFLINE path deterministic, "Hide search" to check the unmount cleanup. The guide presents the ref route and names the alternatives as equally valid: everything effect-local for A, a `{ previous, current }` state object with a functional update for B. Reading a ref in JSX for the previous term is called out as the trap. `exercise.test.tsx` runs the two `Done when` lists in the browser (Vitest 5 browser mode, `preview` provider so it also works on StackBlitz): 5 of 9 fail on `exercise.tsx`, all 9 pass on `solution.tsx`. The solution block only runs once `solution.tsx` has been published.
 
 ---
 

@@ -5,31 +5,40 @@
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type WeatherReading, fetchWeatherReading, fakeSearch } from "./api";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
+import {
+  type WeatherReading,
+  fakeSearch,
+  fetchWeatherReading,
+  startPollingInterval,
+  stopPollingInterval,
+} from "./api";
 
 // ---------------------------------------------------------------------------
 // Solution A: Weather Station Poller
 //
-// Only `data` is rendered — it stays in state.
-// Everything else (isFetching, intervalId, timeoutId) is behavioral state
-// that controls polling logic but never appears in JSX. Moving them to refs:
-//   - eliminates spurious re-renders on every fetch cycle
-//   - makes performFetch stable (no isFetching dep)
-//   - makes cleanup stable (no intervalId/timeoutId deps)
-//   - stops the main effect from re-running on every fetch
+// Of the four state variables only `data` is ever shown. `isFetching`,
+// `intervalId` and `timeoutId` are bookkeeping: the hook has to remember them
+// between renders, but nothing on screen changes when they do. As state, every
+// write to them was a render, every render gave `performFetch` and `cleanup` a
+// new identity, and every new identity re-ran the effect that owns the
+// interval. As refs they are read at call time instead of captured at render
+// time, so the callbacks stay stable, the effect runs once, and the only
+// renders left are the readings.
 // ---------------------------------------------------------------------------
 
 export function useWeatherStationPoller(stationId: string | null) {
-  // Only `data` is rendered — it stays in state
   const [data, setData] = useState<WeatherReading | null>(null);
 
-  // These are behavioral, not rendered — they belong in refs
   const isFetchingRef = useRef(false);
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // performFetch no longer depends on isFetching (it reads from ref),
-  // so it's stable and only depends on stationId
+  const isOffline = data?.status === "OFFLINE";
+
+  // Depends on stationId alone: the in-flight flag is read when the function
+  // runs, not baked in when it is created.
   const performFetch = useCallback(() => {
     if (isFetchingRef.current || !stationId) {
       return;
@@ -49,10 +58,9 @@ export function useWeatherStationPoller(stationId: string | null) {
       });
   }, [stationId]);
 
-  // cleanup no longer depends on intervalId/timeoutId
   const cleanup = useCallback(() => {
     if (intervalIdRef.current) {
-      clearInterval(intervalIdRef.current);
+      stopPollingInterval(intervalIdRef.current);
       intervalIdRef.current = null;
     }
     if (timeoutIdRef.current) {
@@ -61,32 +69,31 @@ export function useWeatherStationPoller(stationId: string | null) {
     }
   }, []);
 
+  // Runs on mount and again when the station goes offline. The cleanup of the
+  // previous run has already stopped the interval by then, so going offline
+  // is just "don't start a new one".
   useEffect(() => {
-    if (data?.status === "OFFLINE") {
-      cleanup();
+    if (isOffline) {
       return;
     }
 
-    if (!intervalIdRef.current) {
-      intervalIdRef.current = setInterval(() => {
-        performFetch();
-      }, 1000);
-    }
+    intervalIdRef.current = startPollingInterval(() => {
+      performFetch();
+    }, 1000);
 
     return cleanup;
-    // Now stable: performFetch and cleanup don't change unless stationId changes
-  }, [performFetch, data?.status, cleanup]);
+  }, [performFetch, isOffline, cleanup]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && data?.status !== "OFFLINE") {
+      if (document.visibilityState === "visible" && !isOffline) {
         performFetch();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [data?.status, performFetch]);
+  }, [isOffline, performFetch]);
 
   return { data };
 }
@@ -94,51 +101,49 @@ export function useWeatherStationPoller(stationId: string | null) {
 export const WeatherStationDisplay: FunctionComponent<{
   stationId: string;
 }> = ({ stationId }) => {
+  const renderCount = useRenderCount();
   const { data } = useWeatherStationPoller(stationId);
-
-  if (!data) {
-    return <div>Loading weather station...</div>;
-  }
 
   return (
     <div>
-      <h2>Station {data.stationId}</h2>
-      <p>Status: {data.status}</p>
-      <p>Temperature: {data.temperatureCelsius}°C</p>
+      <h3>
+        Station {stationId} <RenderCount count={renderCount} />
+      </h3>
+      {data ? (
+        <>
+          <p>Status: {data.status}</p>
+          <p>Temperature: {data.temperatureCelsius}°C</p>
+        </>
+      ) : (
+        <p>Waiting for the first reading...</p>
+      )}
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: Debounced Search with Previous Value
+// Solution B: Debounced Search
 //
-// Three state values moved to refs. The previousSearchTerm fix is the most
-// instructive: instead of syncing via an effect (one render behind), update
-// the ref synchronously in the same callback that sets currentSearchTerm.
-// The display still re-renders because currentSearchTerm (state) changes —
-// but the ref holds the correct "previous" value at the exact right moment.
+// Two questions sort the variables. Does the UI show it? Does the component
+// merely have to remember it between renders? `timerId` and `searchCount` are
+// remembered but never shown, so they become refs. `previousSearchTerm` IS
+// shown, so it stays state. Its bug was timing: an effect can only run after
+// the render in which `currentSearchTerm` has already moved on, so the
+// "previous" term it copied was always the current one. The term of the last
+// completed search is the third ref: the component needs it exactly once, at
+// the moment the next search completes, and can set the state right there.
 // ---------------------------------------------------------------------------
 
 export const DebouncedSearch: FunctionComponent = () => {
+  const renderCount = useRenderCount();
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  // Rendered —> triggers the re-render that shows new results and the
-  // updated "previous search" label.
-  const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-  // Fix 1: timerId → ref. Never rendered, only used for cleanup.
-  // Cleanup effect now has empty deps and the ref is always current.
+  const [previousSearchTerm, setPreviousSearchTerm] = useState("");
+
   const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Fix 2 (main learning): previousSearchTerm → ref, updated synchronously.
-  // In the exercise, the effect ran *after* the render triggered by
-  // setCurrentSearchTerm, so it was always one cycle late. By assigning
-  // `previousSearchTermRef.current = currentSearchTerm` in the same
-  // callback andbefore calling setCurrentSearchTerm — we capture the true
-  // previous value at exactly the right moment.
-  const previousSearchTermRef = useRef("");
-  // Fix 3: searchCount → ref. Only used for console.log, never rendered.
-  // Incrementing a ref doesn't cause a re-render.
   const searchCountRef = useRef(0);
+  const lastSearchedTermRef = useRef("");
 
   const handleSearch = (term: string) => {
     if (timerIdRef.current) {
@@ -152,17 +157,17 @@ export const DebouncedSearch: FunctionComponent = () => {
 
       const searchResults = await fakeSearch(term);
       setResults(searchResults);
-
-      // Capture the previous term synchronously before moving current forward.
-      // This is the critical difference from the effect approach: the ref
-      // holds the right value in this same render, not one render later.
-      previousSearchTermRef.current = currentSearchTerm;
-      setCurrentSearchTerm(term);
+      // The previous term is known right here. No effect needed to find it
+      // one render later.
+      setPreviousSearchTerm(lastSearchedTermRef.current);
+      lastSearchedTermRef.current = term;
       setIsSearching(false);
     }, 300);
   };
 
-  // Cleanup on unmount — no dependency on timerId state
+  // A pending search must not fire after the component is gone. The cleanup
+  // reads the ref when it runs, so this no longer has to re-subscribe on
+  // every new timer.
   useEffect(() => {
     return () => {
       if (timerIdRef.current) {
@@ -182,10 +187,9 @@ export const DebouncedSearch: FunctionComponent = () => {
           handleSearch(e.target.value);
         }}
       />
+      <RenderCount count={renderCount} />
 
-      {previousSearchTermRef.current && (
-        <p>Previous search: &ldquo;{previousSearchTermRef.current}&rdquo;</p>
-      )}
+      {previousSearchTerm && <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>}
 
       {isSearching ? (
         <p>Searching...</p>
@@ -202,7 +206,10 @@ export const DebouncedSearch: FunctionComponent = () => {
 
 // ---------------------------------------------------------------------------
 // Key takeaway
-//   State is for values the UI renders. Refs are for values the component has
-//   to remember but never shows: timers, in-flight flags, previous values.
-//   Behavioral state in useState means a re-render for nothing.
+//   Two questions decide where a value lives. Does the UI show it? State.
+//   Does the component only have to remember it between renders — a timer
+//   id, an in-flight flag, a counter, the last thing it saw? A ref: writing
+//   one doesn't render, and reading one at call time doesn't belong in a
+//   dependency array. Bookkeeping in useState means renders for nothing and
+//   callbacks that change identity for nothing.
 // ---------------------------------------------------------------------------

@@ -112,6 +112,8 @@ files.push(
   ".devcontainer.json",
   "package.json",
   "package-lock.json",
+  "vitest.config.ts",
+  "vitest.setup.ts",
 );
 
 // ---------------------------------------------------------------------------
