@@ -73,6 +73,21 @@ function useProductSearch(query: string): {
 
   // TODO: implement the effect with proper cleanup
   // Remember: the effect should handle the case where query is empty
+  //
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    setIsLoading(true);
+    if (!query) {
+      setResults([]);
+    } else {
+      searchProducts(query).then((data) => {
+        setResults(data);
+      });
+    }
+    setIsLoading(false);
+  }, [query, isLoading]);
 
   return { results, isLoading };
 }

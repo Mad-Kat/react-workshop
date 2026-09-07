@@ -52,9 +52,18 @@ Each phase assumes the previous. You can't teach hydration mismatches (Exercise 
 
 Exercises 02, 05, and 06 include a built-in `useRenderCount()` hook that displays a red badge with the current render count. This makes unnecessary re-renders immediately visible: participants can see the number drop when they fix the anti-pattern.
 
+### Performance Tracks
+
+Stable since React 19.2 and the main measurement tool for Exercise 06. Chrome DevTools → Performance, record while interacting, and React contributes two custom tracks:
+
+1. **Scheduler** — what React worked on and at which priority (this is where `useTransition` becomes visible)
+2. **Components** — per-component render and effect timing
+
+Use it to settle the question Exercise 06 keeps asking: is this computation expensive enough to be worth memoizing? The trivial cases (a ternary, a `Boolean()` call) show nothing measurable, which is the lesson.
+
 ### React DevTools Profiler
 
-For Exercise 06 (memoization) specifically, teach students to use:
+Still useful for the complementary question — _why_ did this render:
 
 1. "Highlight updates when components render" toggle
 2. Profiler flamegraph to see which components re-rendered

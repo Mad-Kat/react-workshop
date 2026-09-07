@@ -16,10 +16,14 @@ import { RenderCount } from "../RenderCount";
 // ---------------------------------------------------------------------------
 // Exercise: Room Booking Panel
 //
-// This component has FOUR useEffect calls. Not all of them should be effects.
+// This component has FIVE useEffect calls. Not all of them should be effects.
 //
 // For each one, decide: is it a legitimate effect, or is it doing something
 // that belongs elsewhere? Refactor the ones that shouldn't be effects.
+//
+// The last one is different. It IS a legitimate effect as it talks to an
+// external system, but it still misbehaves. Change the guest count and
+// watch "Availability subscriptions opened" climb.
 //
 // After refactoring, compare the RenderCount. Why did it decrease?
 // ---------------------------------------------------------------------------
@@ -46,6 +50,36 @@ const subscribeToLiveRateUpdates = (
     callback(Math.floor(Math.random() * 100));
   }, 5000);
   return () => clearInterval(interval);
+};
+
+// Simulates a websocket that streams how many slots are left for a room.
+// Opening one is expensive, so the wrapper displays a running count of how
+// many have been opened — the render counter, but for the external system.
+let opened = 0;
+const openedListeners = new Set<() => void>();
+
+export const getAvailabilityConnections = () => opened;
+export const subscribeToAvailabilityConnections = (listener: () => void) => {
+  openedListeners.add(listener);
+  return () => {
+    openedListeners.delete(listener);
+  };
+};
+
+const subscribeToAvailability = (
+  roomId: string,
+  callback: (slotsLeft: number) => void,
+): (() => void) => {
+  opened += 1;
+  console.log(`[Availability] opened connection #${opened} for ${roomId}`);
+  openedListeners.forEach((listener) => listener());
+  const interval = setInterval(() => {
+    callback(Math.floor(Math.random() * 6));
+  }, 3000);
+  return () => {
+    console.log(`[Availability] closed connection for ${roomId}`);
+    clearInterval(interval);
+  };
 };
 
 export const RoomBookingPanel: FunctionComponent<{
@@ -95,6 +129,18 @@ export const RoomBookingPanel: FunctionComponent<{
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Effect E
+  // The connection only depends on the room. The warning only depends on the
+  // guest count. Both are in the dependency array, so both re-open the socket.
+  useEffect(() => {
+    const unsubscribe = subscribeToAvailability(room.id, (slotsLeft) => {
+      if (slotsLeft < guests) {
+        trackEvent("room_too_small", { roomId: room.id, guests, slotsLeft });
+      }
+    });
+    return unsubscribe;
+  }, [room.id, guests]);
 
   const handleConfirmBooking = () => {
     setConfirmed(true);

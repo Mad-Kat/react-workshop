@@ -208,6 +208,25 @@ After fixing all six problems, notice the pattern. For each memo, the same quest
 
 ---
 
+### How to actually measure
+
+"Measure first" is easy to say and easy to skip. Here are the three instruments, cheapest first.
+
+**1. The render counter.** Already on screen. It answers one question: did this component render again? That is enough to catch a broken `React.memo` (Problem 5) but says nothing about cost.
+
+**2. React Scan.** Loaded in `index.html`, outlines components as they re-render. Good for spotting a cascade you didn't expect. Same limitation: it shows _that_ something rendered, not what it cost.
+
+**3. Performance Tracks.** Stable since React 19.2, and the one that answers "is this actually expensive?". Open Chrome DevTools → Performance, record while you interact, and React adds two custom tracks to the flame chart:
+
+- **Scheduler** — what React was working on and at which priority. This is where a `useTransition` shows up as lower-priority work that yields to the input (Problem 6).
+- **Components** — how long individual components spent rendering and running effects.
+
+That second track is the one that settles memoization arguments. A `useMemo` is worth keeping when removing it makes a visible block on the Components track; it is noise when the work is too small to see. Problems 1 and 3 in this exercise are the second kind — a ternary and a `Boolean()` call — and the track shows nothing measurable either way, which is the point.
+
+The older React DevTools Profiler still works and its "Why did this render?" tooltip is genuinely useful for tracking down an unstable prop. Reach for it when you already know a component re-renders too often and want to know which prop is to blame. Reach for Performance Tracks when you want to know whether the re-render mattered at all.
+
+---
+
 ### "So when IS memoization the right call?"
 
 This exercise only showed cases where memoization was wrong. That might leave you thinking you should never use it. But there are real cases where `useMemo` earns its place.

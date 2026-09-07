@@ -87,7 +87,7 @@ export const FancyInputDemo: FunctionComponent = () => {
   return (
     <div ref={containerRef}>
       <FancyInput ref={fancyInputRef} placeholder="Type here..." />
-      <button onClick={() => fancyInputRef.current?.focus()}>Focus</button>
+      <button onClick={() => fancyInputRef.current?.clear}>Focus</button>
       <button onClick={() => fancyInputRef.current?.clear()}>Clear</button>
       <p>Input width: {inputWidth !== null ? `${inputWidth}px` : "measuring..."}</p>
     </div>

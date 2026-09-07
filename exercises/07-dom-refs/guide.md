@@ -124,11 +124,11 @@ useEffect(() => {
 }, []);
 ```
 
-### Step 7: What is the problem with this approach?
+### Step 1: What is the problem with this approach?
 
 The effect runs on mount. It reads `containerRef.current` and, if the node exists, attaches the listener. But the ref and the effect are decoupled. If the DOM node is not attached when the effect runs (for example, if the component is conditionally rendered and the condition is initially false), `containerRef.current` is `null` and the listener is never attached. There is no mechanism to retry when the node finally appears.
 
-### Step 8: What if you could attach the listener at the exact moment the node appears in the DOM?
+### Step 2: What if you could attach the listener at the exact moment the node appears in the DOM?
 
 That is what a ref callback does. Instead of passing a ref object, you pass a function. React calls that function with the DOM node when it attaches.
 
@@ -150,7 +150,7 @@ const containerRef = useCallback((node: HTMLDivElement) => {
 
 No `useEffect`. No timing gap. No null check. The listener is attached the instant React puts the node in the DOM. When React detaches the node, it calls the returned cleanup function.
 
-### Step 9: Why is useCallback important here?
+### Step 3: Why is useCallback important here?
 
 Without `useCallback`, the callback function is recreated on every render. React sees a new function reference and calls the old cleanup, then calls the new callback. That means the listener is detached and reattached on every render. Wrapping it in `useCallback` with `[]` deps ensures the function is stable and React only calls it when the node actually attaches or detaches.
 

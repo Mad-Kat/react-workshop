@@ -92,7 +92,7 @@ Outside the Suspense boundary:
 
 If the promise rejects, `use()` re-throws the error. The ErrorBoundary **above** the Suspense boundary catches it. If the ErrorBoundary were inside, it would be hidden by the Suspense fallback while the promise is pending and would never get a chance to render when the error occurs.
 
-### Step 8: Verify
+### Verify
 
 The result: 6 state variables become 0. The manual version needed `useState` for product, reviews, productLoading, reviewsLoading, productError, reviewsError. The Suspense version needs **zero** state for loading and error management. React handles it all.
 
@@ -100,7 +100,33 @@ Product should appear first (800ms), reviews should appear later (1500ms), and u
 
 ---
 
+## Side note: `<Activity>`
+
+Stable since React 19.2, and the question it answers is easy to confuse with Suspense.
+
+**Suspense is about data that isn't ready yet.** A subtree wants to render, can't, so React shows a fallback until it can. Everything in this exercise is that.
+
+**Activity is about a subtree you're deliberately not showing right now.** A tab the user hasn't opened, the page they're about to navigate to, a panel they just closed.
+
+```tsx
+<Activity mode={tab === "reviews" ? "visible" : "hidden"}>
+  <Reviews />
+</Activity>
+```
+
+Hidden means React keeps the component's state, unmounts its effects, and renders updates to it at a lower priority than anything visible. Compare that to the two things you'd otherwise reach for:
+
+- `{tab === "reviews" && <Reviews />}` unmounts the subtree. State is gone, effects are torn down, and reopening the tab re-fetches from scratch.
+- `<div style={{ display: "none" }}>` keeps the state _and_ keeps the effects running — subscriptions stay open, timers keep firing, for a subtree nobody can see.
+
+Activity is the middle option, and it's the one that's usually meant.
+
+Where it meets this exercise: a hidden Activity still renders, so a `use()` inside one starts its fetch and warms the Suspense boundary before the user ever switches tabs. The work happens at low priority, so it yields to whatever is on screen. That's the pre-rendering case — you get an instant tab switch without hand-rolling a prefetch.
+
+Worth knowing that hidden effects being unmounted is the sharp edge. If a component's effect is doing something that must keep running while hidden, Activity is the wrong tool for it.
+
 ## Key reading
 
 - [use()](https://react.dev/reference/react/use)
 - [Suspense](https://react.dev/reference/react/Suspense)
+- [`<Activity>`](https://react.dev/reference/react/Activity)

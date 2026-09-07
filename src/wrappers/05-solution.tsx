@@ -1,5 +1,22 @@
-import { useState } from "react";
-import { RoomBookingPanel } from "../../exercises/05-effects/solution.tsx";
+import { useState, useSyncExternalStore } from "react";
+import {
+  getAvailabilityConnections,
+  RoomBookingPanel,
+  subscribeToAvailabilityConnections,
+} from "../../exercises/05-effects/solution.tsx";
+
+// Lives out here so the badge updates when the socket opens, not one render later.
+function ConnectionCount() {
+  const opened = useSyncExternalStore(
+    subscribeToAvailabilityConnections,
+    getAvailabilityConnections,
+  );
+  return (
+    <p style={{ color: "#16a34a" }}>
+      Availability subscriptions opened: <strong>{opened}</strong>
+    </p>
+  );
+}
 
 const rooms = [
   { id: "1", name: "Ocean Suite", ratePerGuest: 120, maxGuests: 4, category: "premium" },
@@ -18,6 +35,7 @@ export default function Wrapper() {
   return (
     <>
       <button onClick={() => setRoomIndex((e) => ++e % rooms.length)}>Change room</button>
+      <ConnectionCount />
       <RoomBookingPanel
         key={roomIndex}
         room={rooms[roomIndex]!}

@@ -46,7 +46,7 @@ Before writing code, think about criticality. Not all sections are equally impor
 
 One boundary per section means **fault isolation**. Reviews crashing doesn't affect product info. Recommendations crashing doesn't affect reviews.
 
-### Step 4: Verify
+### Verify
 
 Toggle each section's failure independently. Check that:
 
@@ -59,11 +59,11 @@ Toggle each section's failure independently. Check that:
 
 ## Part 2: Discover what boundaries DON'T catch
 
-### Step 5: Uncomment BrokenButton. Wrap it in an ErrorBoundary. Click it.
+### Step 1: Uncomment BrokenButton. Wrap it in an ErrorBoundary. Click it.
 
 The boundary does **not** catch the error. The button's `onClick` handler throws, but the boundary is silent.
 
-### Step 6: Why doesn't it work?
+### Step 2: Why doesn't it work?
 
 Error boundaries only catch errors during **rendering**, which is the component's return statement and JSX evaluation. An `onClick` handler runs **after** rendering, outside React's render phase. By the time the handler throws, React is done rendering. There's no boundary mechanism active.
 
@@ -75,6 +75,12 @@ What boundaries don't catch:
 - **Errors in the boundary itself**: use a parent boundary
 
 If you need to surface an event handler error in a boundary, the handler can call a state setter that causes the next render to throw. But that's a workaround, not the intended use of boundaries.
+
+### Verify
+
+Two behaviours, and the contrast is the point. Toggling "Product fails" takes out the product section and nothing else — the boundary you added in Part 1 caught it. Clicking `BrokenButton` inside a boundary takes out nothing at all: the error reaches the console, the boundary never renders its fallback, and the page keeps working.
+
+Same `throw`, same boundary, opposite outcome. The only difference is whether React was rendering at the time.
 
 ---
 

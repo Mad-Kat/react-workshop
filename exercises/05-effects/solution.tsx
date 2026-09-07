@@ -4,7 +4,7 @@
  */
 
 import type { FunctionComponent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
@@ -28,6 +28,33 @@ const subscribeToLiveRateUpdates = (
     callback(Math.floor(Math.random() * 100));
   }, 5000);
   return () => clearInterval(interval);
+};
+
+let opened = 0;
+const openedListeners = new Set<() => void>();
+
+export const getAvailabilityConnections = () => opened;
+export const subscribeToAvailabilityConnections = (listener: () => void) => {
+  openedListeners.add(listener);
+  return () => {
+    openedListeners.delete(listener);
+  };
+};
+
+const subscribeToAvailability = (
+  roomId: string,
+  callback: (slotsLeft: number) => void,
+): (() => void) => {
+  opened += 1;
+  console.log(`[Availability] opened connection #${opened} for ${roomId}`);
+  openedListeners.forEach((listener) => listener());
+  const interval = setInterval(() => {
+    callback(Math.floor(Math.random() * 6));
+  }, 3000);
+  return () => {
+    console.log(`[Availability] closed connection for ${roomId}`);
+    clearInterval(interval);
+  };
 };
 
 export const RoomBookingPanel: FunctionComponent<{
@@ -66,6 +93,27 @@ export const RoomBookingPanel: FunctionComponent<{
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Effect E → LEGITIMATE EFFECT with a reactivity problem.
+  //
+  // The effect had two dependencies doing two different jobs. `room.id` decides
+  // WHICH socket to open — genuinely reactive, a change means reconnect.
+  // `guests` was only ever READ when a message arrived; it never described the
+  // connection. Listing it forced a reconnect on every keystroke.
+  //
+  // useEffectEvent splits those apart. The event always sees the latest guests
+  // without being reactive, so it does NOT go in the dependency array — that's
+  // the rule, and it's the whole point.
+  const onSlotsChanged = useEffectEvent((slotsLeft: number) => {
+    if (slotsLeft < guests) {
+      trackEvent("room_too_small", { roomId: room.id, guests, slotsLeft });
+    }
+  });
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAvailability(room.id, onSlotsChanged);
+    return unsubscribe;
+  }, [room.id]);
+
   // Everything that should happen on confirm goes in the handler.
   // The component doesn't need to know whether analytics is wired up
   // or what the parent does with onConfirm. It just calls them.
@@ -100,4 +148,6 @@ export const RoomBookingPanel: FunctionComponent<{
 //   An effect is for synchronizing with something outside React.
 //   If the value is computable from what you already have, derive it during
 //   render. If it happens because the user did something, put it in the handler.
+//   If the effect only READS a value rather than reacting to it, wrap that part
+//   in useEffectEvent and keep it out of the dependency array.
 // ---------------------------------------------------------------------------

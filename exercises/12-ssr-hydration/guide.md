@@ -42,7 +42,7 @@ Here's what happens at each phase:
 
 When `width` is `null`, render a placeholder instead of the mobile/desktop layout. After hydration, the real layout appears.
 
-### Step 3: Verify
+### Verify
 
 The component should render a placeholder on the server (no crash), hydrate without a mismatch warning, then show the real width and correct layout.
 
@@ -81,7 +81,7 @@ React only calls the initializer function once, on mount. On the server, it retu
 
 **Important**: `useState(getInitialTheme)` passes the function. `useState(getInitialTheme())` calls it immediately and passes the result. Both work here, but the function form is the idiomatic pattern for expensive or environment-dependent initializers.
 
-### Step 3: Verify
+### Verify
 
 The server render should produce the light theme without crashing. The client should pick up whatever is stored in `localStorage`.
 
@@ -107,7 +107,7 @@ const selectId = useId(); // same value on server and client
 
 No `Math.random()`, no mismatch.
 
-### Step 3: Verify
+### Verify
 
 There should be no hydration mismatch warning in the console. The `id` and `htmlFor` attributes should match between server HTML and client render.
 

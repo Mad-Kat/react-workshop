@@ -60,7 +60,7 @@ When the `action` prop is a function, React does several things for you:
 
 **Bonus:** extract a `SubmitButton` that uses `useFormStatus()` from `react-dom` to read pending state without prop drilling.
 
-### Step 5: Verify
+### Verify
 
 The action version should behave identically to the manual version: optimistic item appears instantly at half opacity, disappears on error, gets replaced by the real item on success. But count the `useState` calls now. The async lifecycle state is gone.
 
@@ -95,7 +95,7 @@ No stale closures. No race conditions.
 3. Use `dispatch` as the form `action` (or call it from a button click)
 4. Disable the button while `isPending`, show the current count
 
-### Step 4: Verify
+### Verify
 
 Click "Like" three times quickly. The count should go from 42 to 45. Each click is queued and processed in order.
 
