@@ -4,19 +4,21 @@
 
 In Exercise 02 the state was **redundant**. You could delete it entirely and derive the value from props. The state served no purpose.
 
-In Exercise 03 the state is **legitimate**. The component genuinely needs its own local copy of data. You cannot just delete it. The problem is how that state gets _reset_ when the source data changes from the outside.
+Exercise 03 is about the case where the state is **legitimate**: the component genuinely needs its own local copy of data, you cannot just delete it, and the problem is how that copy gets _reset_ when the source data changes from the outside.
 
-Keep this distinction in mind as you work through both exercises.
+A1 is the warm-up, and it is deliberately the easy case — its state turns out to be redundant after all, and most people fix it by deleting the state outright. That answer is correct. A2 and B are the same shape with the escape hatch removed: there the local copy has to stay, and `key` is what resets it.
+
+Keep this distinction in mind as you work through the three parts.
 
 ---
 
-## Exercise A: FontSizePicker
+## Exercise A1: FontSizePicker
 
 ### Step 1: What does this component actually do?
 
-Read the component and understand its purpose before looking for bugs. `FontSizePicker` receives a `fontSize` prop from the parent. But the user can also type a custom value into the input. That means the component needs local state (`inputValue`) to hold what the user is typing, independently from what the parent says.
+Read the component and understand its purpose before looking for bugs. `FontSizePicker` receives a `fontSize` prop from the parent. But the user can also type a custom value into the input, so the component keeps local state (`inputValue`) for what the user is typing.
 
-This is different from Exercise 02. In that exercise the state was just a mirror of a prop. Here the state has a real job: it holds the user's in-progress edit.
+At least, that's the story the code tells. Hold on to the question of whether the state really earns its keep here — Step 5 comes back to it.
 
 ### Step 2: So what's the effect doing?
 
@@ -51,9 +53,17 @@ The first render is wasted work. It computed and returned UI based on a value th
 
 ### Step 5: So how can you fix it?
 
-The real question is: why does `FontSizePicker` need to "sync" its state to the prop at all? It already receives `fontSize` as a prop. The state exists so the component can hold a draft value while the user is typing. But when the prop changes from the outside (preset button click), you want a fresh start.
+The real question is: why does `FontSizePicker` need to "sync" its state to the prop at all? It already receives `fontSize` as a prop.
 
-Look at the parent, `ThemeEditor`. What if you could tell React to throw away the old `FontSizePicker` and mount a brand new one when the font size changes?
+**The short answer: it doesn't.** Look closely at the `onChange` handler — every keystroke calls `onFontSizeChanged`, so the parent is told immediately and `inputValue` is never anything other than `String(fontSize)`. The state is redundant. Delete the effect _and_ the `useState`, and bind the input straight to the prop:
+
+```tsx
+<input type="number" value={fontSize !== null ? String(fontSize) : ""} ... />
+```
+
+One render per click, no effect, and focus survives. This is the same move as Exercise 02, and it is the right one here: when state is redundant, deleting it beats resetting it. Most participants find this fix, and it's the one to keep.
+
+**The other answer** is worth walking through anyway, because it's the tool A2 and B will need. Suppose you wanted to keep the state — a fresh copy on every prop change, without an effect. Look at the parent, `ThemeEditor`. What if you could tell React to throw away the old `FontSizePicker` and mount a brand new one when the font size changes?
 
 ```tsx
 <FontSizePicker
@@ -68,13 +78,76 @@ Adding `key={selectedFontSize}` does exactly that. When the key changes, React *
 
 ### Step 6: Now what can you clean up?
 
-If the key trick handles the reset, the `useEffect` that syncs `fontSize` into `inputValue` is unnecessary. Delete it.
+Either way, the `useEffect` that syncs `fontSize` into `inputValue` is now unnecessary. Delete it. If you took the first route, the `useState` goes with it.
 
 ### Verify
 
-Click the preset buttons again and watch the counter. It now reads `renders: 1` after every click, and stays there — because the `key` change mounts a brand new component each time, and `useState` initializes with the correct value on mount. One render, no effect, no stale snapshot.
+Click the preset buttons again and watch the counter. Both fixes get you one render per click instead of two, and they look quite different:
 
-That reset-to-1 is itself worth noticing: it's direct evidence that you're getting a new component instance rather than an updated one.
+- **Deleted the state:** the counter climbs by exactly one per click. Same component instance, updated. Typing keeps focus, because nothing remounts.
+- **Used `key`:** the counter reads `renders: 1` after every click and stays there, because a brand new instance is mounted each time and `useState` initializes from the current prop. That reset-to-1 is direct evidence of a remount.
+
+Now type into the `key` version and watch what that remount costs. Every keystroke calls `onFontSizeChanged`, which changes `selectedFontSize`, which changes the key — so the input is unmounted and remounted **on every character**, and focus lands back on the document body. You type one digit and have to click back into the field for the next one.
+
+That is not a working component, and it's the sharpest possible argument for the first fix: keying on the value you are editing is self-defeating when every keystroke changes that value. The deleted-state version has no such problem — type into it and the caret stays put, character after character.
+
+Measure it rather than trusting your eyes. `document.activeElement` after one keystroke is `BODY` in the `key` version and the `<input>` in the deleted-state version. And don't read anything into focus after a _preset click_: focus moves to the button you clicked, in both versions, because that's what clicking a button does. The telling case is typing.
+
+Keep the observation. A2 is the same picker with the commit moved to blur, which is precisely what makes `key={selectedFontSize}` viable there.
+
+Now go to A2, which is the same picker with the deletion route closed off.
+
+---
+
+## Exercise A2: FontSizePicker with a real draft
+
+### Step 1: What changed?
+
+The same picker, with one difference: it no longer calls `onFontSizeChanged` on every keystroke. `onChange` only updates the local draft, and the value is committed to the parent on **blur** or **Enter**.
+
+```tsx
+onChange={(e) => setInputValue(e.currentTarget.value)}
+onBlur={commit}
+```
+
+That one change makes `inputValue` a genuine draft. Between two commits it holds strings the parent cannot hold at all: `"1."` while you're typing a decimal, `""` while you're clearing the field, `"abc"` if you typo.
+
+### Step 2: Try the A1 fix
+
+Delete the `useState` and bind `value` to the prop, exactly as in A1.
+
+Now try to type `1.5`. You can't. The moment you type the `.`, the value round-trips through `fontSize` as the number `1`, and the input shows `1` again. Try to clear the field: it snaps back. The prop is a `number | null` and the draft is a string — they are not the same information, and the string is the one the user is currently editing.
+
+Put the state back. **This state is legitimate.** Only the reset mechanism is wrong.
+
+### Step 3: Fix the reset
+
+Same tool as A1's second answer, and now it's the only one:
+
+```tsx
+<FontSizeDraftPicker
+  key={selectedFontSize}
+  fontSize={selectedFontSize}
+  onFontSizeChanged={setSelectedFontSize}
+  placeholder="Enter px value"
+/>
+```
+
+Then delete the `useEffect`.
+
+### Step 4: Why the commit-on-blur detail matters
+
+Notice what the key is keyed on: `selectedFontSize`, the value being edited. In A1 that would have remounted the component on **every keystroke**, because every keystroke committed a new value. Here the value only changes on blur or on a preset click, so:
+
+- typing never remounts — the draft survives, `1.` and all
+- committing your own edit doesn't disturb you, you've already left the field
+- a preset click changes the value from the outside, the key changes, and the draft is discarded
+
+A `key` is only as good as the thing you key it on. It should identify the _occasion to reset_, not merely change often. If the value did change on every keystroke, you'd key on something that marks the preset click instead (a counter, or the preset id).
+
+### Verify
+
+Type `1.5` and watch the counter — it climbs one render per keystroke and never resets, because you're editing one instance. Then click a preset: the counter drops back to `renders: 1` and the input shows the preset value. One render, no effect, draft correctly thrown away.
 
 ---
 
@@ -141,12 +214,13 @@ Toggle some checkboxes. Click "Simulate external update". The dialog remounts wi
 
 ## The two flavors
 
-These exercises show the same pattern applied to two situations:
+These exercises show the same effect applied to three situations, and the fix is not the same in all three:
 
-- **Redundant state** (Exercise A): the local state IS the prop. Fix: key trick in the parent, then delete the state sync effect.
-- **Editable copy** (Exercise B): the local state is a _draft_ of the prop. The state is legitimate, but the effect-based reset is not. Fix: key trick in the parent to remount with fresh state.
+- **Redundant state** (A1): the local state IS the prop, because every keystroke is reported upward immediately. Fix: delete the state and control the input from the parent. `key` also works, but it's a heavier answer to a lighter problem.
+- **Draft state** (A2): the local state holds strings the parent cannot represent (`"1."`, `""`) because the value is only committed on blur. It cannot be deleted. Fix: `key` in the parent, so a value change discards the draft.
+- **Editable copy** (B): the local state is a draft of a whole object, and the update arrives from outside the component, so there's no event handler to hang the reset on. Fix: `key` in the parent to remount with fresh state.
 
-In both cases, `useEffect(() => setState(prop), [prop])` causes a double render and is replaceable by `key`.
+In all three, `useEffect(() => setState(prop), [prop])` causes a double render on a stale snapshot. Only in A1 is the answer to remove the state itself; when the state has to stay, `key` replaces the effect.
 
 ---
 
@@ -166,9 +240,11 @@ The `key` trick eliminates the effect entirely. Prefer structural fixes over tim
 
 ### `key` is not always the right tool
 
-`key` is the right answer for both components above, but it isn't free and it isn't the only option. Four approaches, in the order you should reach for them:
+`key` is the right answer for A2 and B, and the second-best answer for A1 — but it isn't free and it isn't the only option. Four approaches, in the order you should reach for them:
 
-**1. Do it where the event happens.** In Exercise A the preset click already knows that two things need to change. If the parent owned the draft string, the handler could set both at once and nothing would need to sync afterwards:
+**0. Delete the state.** If the local copy is always equal to the prop, there is nothing to reset. This is A1, and it's why most participants never needed `key` there. Check for it first; the remaining three only apply once you've established that the state has to exist.
+
+**1. Do it where the event happens.** In A2 the preset click already knows that two things need to change. If the parent owned the draft string, the handler could set both at once and nothing would need to sync afterwards:
 
 ```tsx
 const selectPreset = (size: number) => {
@@ -177,9 +253,9 @@ const selectPreset = (size: number) => {
 };
 ```
 
-No effect, no key, no remount. This is the same move as Exercise 02: when one event causes two changes, make both changes in that event. It only works when the change starts from an event you control — true for A's preset buttons, and not true for B, where the update arrives from outside.
+No effect, no key, no remount. This is the same move as Exercise 02: when one event causes two changes, make both changes in that event. It only works when the change starts from an event you control — true for A2's preset buttons, and not true for B, where the update arrives from outside. The cost is that the draft moves up to the parent, which now carries a string it doesn't otherwise care about.
 
-**2. `key`, when you want to reset all of the state.** What you did in both parts. Cheap to write and hard to get wrong, but it throws away the whole subtree: DOM nodes, every piece of state in every child, scroll position, focus. On one input that costs nothing. On a large form, or a list whose children are expensive to mount, the remount _is_ the cost.
+**2. `key`, when you want to reset all of the state.** What you did in A2 and B. Cheap to write and hard to get wrong, but it throws away the whole subtree: DOM nodes, every piece of state in every child, scroll position, focus. On one input that costs nothing. On a large form, or a list whose children are expensive to mount, the remount _is_ the cost.
 
 **3. Adjust state during render, when you want to reset part of it.** When `key` is too blunt (you want to reset one field, not all of them) or too expensive, React's documented alternative is to set state during rendering, guarded by a comparison against the previous prop:
 

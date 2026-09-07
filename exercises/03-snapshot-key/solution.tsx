@@ -9,7 +9,7 @@ import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Solution A: FontSizePicker
+// Solution A1: FontSizePicker
 //
 // The ONLY change inside FontSizePicker: delete the useEffect.
 // The real fix is in the parent: `key={selectedFontSize}`.
@@ -83,6 +83,127 @@ export const ThemeEditor: FunctionComponent = () => {
 
       {/* key={selectedFontSize} forces remount — fresh state on every preset change */}
       <FontSizePicker
+        key={selectedFontSize}
+        fontSize={selectedFontSize}
+        onFontSizeChanged={setSelectedFontSize}
+        placeholder="Enter px value"
+      />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Solution A1, the other answer (and the one most participants find)
+//
+// The state in A1 is redundant: the input commits on every keystroke, so
+// `inputValue` is always just `String(fontSize)`. Delete the effect AND the
+// state, bind the input to the prop, and the component becomes plainly
+// controlled by the parent:
+//
+//   export const FontSizePicker = ({ fontSize, onFontSizeChanged, placeholder }) => (
+//     <input
+//       type="number"
+//       value={fontSize !== null ? String(fontSize) : ""}
+//       placeholder={placeholder}
+//       onChange={(e) => { ...same parse, no setInputValue... }}
+//     />
+//   );
+//
+// No effect, no key, no remount — and focus survives typing. That last part is
+// not a nicety: in the key version above, every keystroke commits a new
+// fontSize, so the key changes on every keystroke, the input remounts, and
+// focus is lost after each character. Verified in the browser: type one digit
+// and document.activeElement is BODY. Demo the key version on the preset
+// buttons, not by typing.
+//
+// This is the better fix for A1, and it's the same lesson as Exercise 02:
+// when state is redundant, deleting it beats resetting it. React's own
+// ordering agrees — derive or lift first, reach for `key` after that.
+//
+// Accept it, then send them to A2, where the state can't be deleted.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Solution A2: FontSizePicker with a real draft
+//
+// Here the A1 fix is not available. The value is committed on blur, so while
+// you type, `inputValue` holds strings the parent cannot represent — "1.",
+// "", "abc". Bind the input to the prop and decimals become untypable.
+// The state is legitimate; only the reset mechanism is wrong.
+//
+// Fix: delete the effect, and let the parent remount with `key={fontSize}`.
+// Because the commit happens on blur rather than on every keystroke, the key
+// only changes when the value actually changes — typing doesn't remount, so
+// the draft survives keystrokes and is discarded on preset clicks. That is
+// exactly the reset you want.
+//
+// Counter: 1 render per preset click, resetting each time (new instance).
+// ---------------------------------------------------------------------------
+
+export const FontSizeDraftPicker: FunctionComponent<FontSizePickerProps> = ({
+  fontSize,
+  onFontSizeChanged,
+  placeholder,
+}) => {
+  const renderCount = useRenderCount();
+  const [inputValue, setInputValue] = useState<string>(fontSize !== null ? String(fontSize) : "");
+
+  // No useEffect needed — key trick handles the reset
+
+  const commit = () => {
+    const raw = inputValue.trim();
+    const parsed = Number(raw);
+    if (raw === "") {
+      onFontSizeChanged(null);
+    } else if (Number.isFinite(parsed) && parsed > 0) {
+      onFontSizeChanged(parsed);
+    } else {
+      // Invalid draft: throw it away in the event handler that caused it.
+      setInputValue(fontSize !== null ? String(fontSize) : "");
+    }
+  };
+
+  return (
+    <>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => setInputValue(e.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            commit();
+          }
+        }}
+      />
+      <RenderCount count={renderCount} />
+    </>
+  );
+};
+
+// The fix: key={selectedFontSize} in the parent
+export const ThemeEditorWithDraft: FunctionComponent = () => {
+  const [selectedFontSize, setSelectedFontSize] = useState<number | null>(14);
+
+  const presets = [
+    { id: "1", size: 12, label: "Small" },
+    { id: "2", size: 14, label: "Medium" },
+    { id: "3", size: 18, label: "Large" },
+  ];
+
+  return (
+    <div>
+      <h2>Font size (draft, committed on blur)</h2>
+      {presets.map((preset) => (
+        <button key={preset.id} onClick={() => setSelectedFontSize(preset.size)}>
+          {preset.label}
+        </button>
+      ))}
+
+      {/* key={selectedFontSize} discards the draft whenever the value changes */}
+      <FontSizeDraftPicker
         key={selectedFontSize}
         fontSize={selectedFontSize}
         onFontSizeChanged={setSelectedFontSize}

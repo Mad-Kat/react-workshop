@@ -14,7 +14,7 @@ import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Exercise A: FontSizePicker
+// Exercise A1: FontSizePicker
 //
 // Run the exercise. Click "Small", then "Large", then "Medium" — and watch the
 // render counter. It goes up by TWO on every click.
@@ -26,8 +26,9 @@ import { RenderCount } from "../RenderCount";
 // Find the bug. Fix it. Then clean up whatever becomes unnecessary.
 // The counter tells you when you've got it.
 //
-// Disclaimer: The intended solution changes the input focus behavior.
-// So don't worry if the input loses focus when you click a preset.
+// Disclaimer: there are two possible fixes here, and one of them costs you the
+// input focus — on every keystroke, not just on preset clicks. That's not a
+// bug in your fix; it's information. Notice it, then move on to A2.
 // ---------------------------------------------------------------------------
 
 interface FontSizePickerProps {
@@ -91,6 +92,100 @@ export const ThemeEditor: FunctionComponent = () => {
       ))}
 
       <FontSizePicker
+        fontSize={selectedFontSize}
+        onFontSizeChanged={setSelectedFontSize}
+        placeholder="Enter px value"
+      />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Exercise A2: FontSizePicker, take two
+//
+// If you solved A1 by deleting BOTH the effect and the state — binding the
+// input straight to the `fontSize` prop — you were right. That state was
+// redundant, and the best fix for redundant state is to delete it.
+//
+// This version is the same picker with one change: it no longer commits on
+// every keystroke. You type freely, and the value is committed on blur or
+// Enter. That makes `inputValue` a real draft: while you are typing it holds
+// strings the parent can't hold at all — "1.", "", "abc".
+//
+// Try the A1 fix here first: delete the state and bind `value` to the prop.
+// You'll find you can't type "1.5" any more, and you can't clear the field.
+// The state has to stay.
+//
+// So the effect is still there, and the counter still climbs by two per
+// preset click. Fix it without removing the state.
+// ---------------------------------------------------------------------------
+
+export const FontSizeDraftPicker: FunctionComponent<FontSizePickerProps> = ({
+  fontSize,
+  onFontSizeChanged,
+  placeholder,
+}) => {
+  const renderCount = useRenderCount();
+  const [inputValue, setInputValue] = useState<string>(fontSize !== null ? String(fontSize) : "");
+
+  useEffect(() => {
+    setInputValue(fontSize !== null ? String(fontSize) : "");
+  }, [fontSize]);
+
+  // Commit the draft to the parent — on blur or Enter, not on every keystroke.
+  const commit = () => {
+    const raw = inputValue.trim();
+    const parsed = Number(raw);
+    if (raw === "") {
+      onFontSizeChanged(null);
+    } else if (Number.isFinite(parsed) && parsed > 0) {
+      onFontSizeChanged(parsed);
+    } else {
+      // Invalid draft: throw it away and go back to what the parent says.
+      setInputValue(fontSize !== null ? String(fontSize) : "");
+    }
+  };
+
+  return (
+    <>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => setInputValue(e.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            commit();
+          }
+        }}
+      />
+      <RenderCount count={renderCount} />
+    </>
+  );
+};
+
+// Parent that uses FontSizeDraftPicker (you might want to change this too)
+export const ThemeEditorWithDraft: FunctionComponent = () => {
+  const [selectedFontSize, setSelectedFontSize] = useState<number | null>(14);
+
+  const presets = [
+    { id: "1", size: 12, label: "Small" },
+    { id: "2", size: 14, label: "Medium" },
+    { id: "3", size: 18, label: "Large" },
+  ];
+
+  return (
+    <div>
+      <h2>Font size (draft, committed on blur)</h2>
+      {presets.map((preset) => (
+        <button key={preset.id} onClick={() => setSelectedFontSize(preset.size)}>
+          {preset.label}
+        </button>
+      ))}
+
+      <FontSizeDraftPicker
         fontSize={selectedFontSize}
         onFontSizeChanged={setSelectedFontSize}
         placeholder="Enter px value"
