@@ -3,29 +3,43 @@
  * =========================================
  *
  * Mental model: Refs are a "secret pocket" — mutable, not tracked by React.
- * If a value doesn't need to trigger a re-render, it probably belongs in a ref.
  *
  * Key reading: https://react.dev/learn/referencing-values-with-refs
+ *
+ * `npm test` runs the "Done when" lists below in your browser.
  */
 
 import type { FunctionComponent } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { type WeatherReading, fetchWeatherReading, fakeSearch } from "./api";
+import { useRenderCount } from "../useRenderCount";
+import { RenderCount } from "../RenderCount";
+import {
+  type WeatherReading,
+  fakeSearch,
+  fetchWeatherReading,
+  startPollingInterval,
+  stopPollingInterval,
+} from "./api";
 
 // ---------------------------------------------------------------------------
 // Exercise A: Weather Station Poller
 //
-// This hook polls a weather station API every second. It works, but it
-// re-renders far more often than it should.
+// `useWeatherStationPoller` asks the station for a reading once a second and
+// hands the latest one to the display. A failed request is retried after a
+// second, only one request is in flight at a time, and polling stops for good
+// once the station reports OFFLINE.
 //
-// Step 1: List all the useState calls. For each one, check: is the value
-//         ever read in JSX? (Hint: only ONE of them is)
-// Step 2: For each non-rendered value, convert useState → useRef.
-//         Update reads (.current) and writes (.current = value).
-// Step 3: After converting, look at the useCallback dependency arrays.
-//         Which dependencies can you remove? Why?
-// Step 4: Trace the cascade: how many fewer times does the main
-//         useEffect re-run after your fix?
+// Run it and watch the numbers. The display renders about six times per
+// request, and the interval that drives the polling is cleared and started
+// over twice per request. A new reading is the only reason this display has
+// to render.
+//
+// Done when:
+//   - `renders` climbs by one per request, not six
+//   - `intervals started` stays at 1 until you take the station offline
+//   - a failed request doesn't render anything and polling carries on, there
+//     is still never more than one request in flight, and polling still
+//     stops on OFFLINE
 // ---------------------------------------------------------------------------
 
 export function useWeatherStationPoller(stationId: string | null) {
@@ -34,6 +48,8 @@ export function useWeatherStationPoller(stationId: string | null) {
   const [isFetching, setIsFetching] = useState(false);
   const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
   const [timeoutId, setTimeoutId] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const isOffline = data?.status === "OFFLINE";
 
   const performFetch = useCallback(() => {
     if (isFetching || !stationId) {
@@ -48,7 +64,6 @@ export function useWeatherStationPoller(stationId: string | null) {
       })
       .catch(() => {
         setIsFetching(false);
-        // Retry after 1 second
         const retryId = setTimeout(() => {
           performFetch();
         }, 1000);
@@ -58,7 +73,7 @@ export function useWeatherStationPoller(stationId: string | null) {
 
   const cleanup = useCallback(() => {
     if (intervalId) {
-      clearInterval(intervalId);
+      stopPollingInterval(intervalId);
       setIntervalId(null);
     }
     if (timeoutId) {
@@ -68,93 +83,99 @@ export function useWeatherStationPoller(stationId: string | null) {
   }, [intervalId, timeoutId]);
 
   useEffect(() => {
-    if (data?.status === "OFFLINE") {
+    if (isOffline) {
       cleanup();
       return;
     }
 
     if (!intervalId) {
-      const id = setInterval(() => {
+      const id = startPollingInterval(() => {
         performFetch();
       }, 1000);
       setIntervalId(id);
     }
 
     return cleanup;
-  }, [performFetch, data?.status, intervalId, cleanup]);
+  }, [performFetch, isOffline, intervalId, cleanup]);
 
-  // Visibility change handler
+  // Fetch right away when the tab comes back into view instead of waiting
+  // for the next tick of the interval
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && data?.status !== "OFFLINE") {
+      if (document.visibilityState === "visible" && !isOffline) {
         performFetch();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [data?.status, performFetch]);
+  }, [isOffline, performFetch]);
 
   return { data };
 }
 
-// Demo component
 export const WeatherStationDisplay: FunctionComponent<{
   stationId: string;
 }> = ({ stationId }) => {
+  const renderCount = useRenderCount();
   const { data } = useWeatherStationPoller(stationId);
-
-  if (!data) {
-    return <div>Loading weather station...</div>;
-  }
 
   return (
     <div>
-      <h2>Station {data.stationId}</h2>
-      <p>Status: {data.status}</p>
-      <p>Temperature: {data.temperatureCelsius}°C</p>
+      <h3>
+        Station {stationId} <RenderCount count={renderCount} />
+      </h3>
+      {data ? (
+        <>
+          <p>Status: {data.status}</p>
+          <p>Temperature: {data.temperatureCelsius}°C</p>
+        </>
+      ) : (
+        <p>Waiting for the first reading...</p>
+      )}
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// Exercise B: Debounced Search with Previous Value
+// Exercise B: Debounced Search
 //
-// This search component has unnecessary re-renders. Three state values
-// don't belong in state.
+// Typing runs a search 300ms after the last keystroke and shows the results,
+// plus a line naming the term that was searched before the current one.
 //
-// Step 1: For each useState, ask: "Is this rendered in JSX?"
-//         Find the three that aren't (or don't need to be the render trigger).
-// Step 2: One of them — previousSearchTerm — is trickier. It IS displayed
-//         in JSX. But does it need to be the TRIGGER for that render?
-//         (Hint: currentSearchTerm already triggers the render)
-// Step 3: When converting previousSearchTerm, you need to update it
-//         SYNCHRONOUSLY in the same callback, BEFORE setCurrentSearchTerm.
-//         Why? What happens if you update it after?
+// Run it. Type "re", wait for the results, then type "act". "Previous search"
+// now claims the previous search was "react" — that is the current one. Watch
+// the render counter while you do it: each search costs one render more than
+// the two it needs (one to show "Searching...", one to show the results).
+//
+// Done when:
+//   - "Previous search" names the term that was searched before the one
+//     whose results are on screen
+//   - a search costs two renders, keystrokes aside
+//   - the component doesn't render for values that never show up on screen
+//   - the "Search #n" line in the console keeps counting, and hiding the
+//     search while a search is pending still cancels it
 // ---------------------------------------------------------------------------
 
 export const DebouncedSearch: FunctionComponent = () => {
+  const renderCount = useRenderCount();
   const [inputValue, setInputValue] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-  const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [previousSearchTerm, setPreviousSearchTerm] = useState("");
+  const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [searchCount, setSearchCount] = useState(0);
 
   useEffect(() => {
     setPreviousSearchTerm(currentSearchTerm);
   }, [currentSearchTerm]);
 
-  // Is this rendered in JSX?
-  const [searchCount, setSearchCount] = useState(0);
-
   const handleSearch = (term: string) => {
-    // Clear previous timer
     if (timerId) {
       clearTimeout(timerId);
     }
 
-    // Set new debounce timer
     const newTimerId = setTimeout(async () => {
       setIsSearching(true);
       setSearchCount((c) => c + 1);
@@ -169,7 +190,7 @@ export const DebouncedSearch: FunctionComponent = () => {
     setTimerId(newTimerId);
   };
 
-  // Cleanup on unmount
+  // A pending search must not fire after the component is gone
   useEffect(() => {
     return () => {
       if (timerId) {
@@ -189,6 +210,7 @@ export const DebouncedSearch: FunctionComponent = () => {
           handleSearch(e.target.value);
         }}
       />
+      <RenderCount count={renderCount} />
 
       {previousSearchTerm && <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>}
 

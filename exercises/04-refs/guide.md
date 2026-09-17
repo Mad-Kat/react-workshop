@@ -1,10 +1,14 @@
 # Exercise 04: Way to get to the solution
 
+The exercise only told you what the fixed version has to do, and `npm test` checks exactly that list. This is one way there, with the forks along the road where a different choice is just as good.
+
+---
+
 ## Exercise A: WeatherStationPoller
 
-### Start by listing all the useState calls
+### Step 1: What can make the display render at all?
 
-There are four:
+`WeatherStationDisplay` gets one prop, `stationId`, and it never changes. So every render after the first one comes from a state update inside `useWeatherStationPoller`. There are four:
 
 ```tsx
 const [data, setData] = useState<WeatherReading | null>(null);
@@ -13,173 +17,120 @@ const [intervalId, setIntervalId] = useState<...>(null);
 const [timeoutId, setTimeoutId] = useState<...>(null);
 ```
 
-### Step 1: Which of these are rendered in JSX?
+Only `data` leaves the hook, and only `data` shows up in JSX. The other three exist so the hook can remember things between renders: whether a request is in flight, and which timers to clear. Nothing on screen depends on them. Every `setIsFetching`, `setIntervalId` and `setTimeoutId` is a render that produces the same output as the one before.
 
-Look at the return value of `useWeatherStationPoller`:
+### Step 2: Why six renders and two intervals per request, not three and none?
+
+Three wasted state updates per cycle would already be bad. The counters say it's worse, and the reason is in the dependency arrays:
 
 ```tsx
-return { data };
+const performFetch = useCallback(() => { ... }, [stationId, isFetching]);
+const cleanup = useCallback(() => { ... }, [intervalId, timeoutId]);
+
+useEffect(() => { ... }, [performFetch, isOffline, intervalId, cleanup]);
 ```
 
-Only `data` leaves the hook. And in `WeatherStationDisplay`, only `data` fields appear in JSX: `data.stationId`, `data.status`, `data.temperatureCelsius`.
+Follow one tick of the interval:
 
-So out of four state variables, only **one** is rendered. The other three (`isFetching`, `intervalId`, `timeoutId`) exist purely for behavioral logic: guarding against concurrent requests, storing timer IDs for cleanup.
+1. `performFetch` runs, `setIsFetching(true)` → render
+2. `isFetching` changed, so `performFetch` is a new function
+3. `performFetch` is a dependency of the main effect, so the effect re-runs: its cleanup clears the interval and calls `setIntervalId(null)` → render
+4. `intervalId` changed, so `cleanup` is a new function, so the effect re-runs again, and this time it starts a new interval and calls `setIntervalId(id)` → render
+5. The response arrives, `setData` and `setIsFetching(false)` → render
+6. `isFetching` changed, so `performFetch` is new, so steps 3 and 4 happen all over again → two more renders
 
-### Step 2: What happens every time one of those non-rendered values changes?
+Six renders and two fresh intervals, for one reading. The interval you asked for once a second is torn down and rebuilt twice a second. It only keeps polling at all because the rebuilds happen to land before the next tick. The console even shows `interval cleared` twice per teardown: two consecutive runs of the effect captured the same interval id, and the cleanup of each one clears it.
 
-Each `setIsFetching`, `setIntervalId`, or `setTimeoutId` call triggers a re-render. But nothing in the JSX depends on them. The re-render produces the same output. It's wasted work.
+Note what the cascade is made of. State updates cause renders, renders give callbacks new identities, new identities re-run effects, effects cause state updates. Every link is a value that was never meant to be rendered.
 
-Worse, look at the dependency arrays:
+### Step 3: What does a ref change?
+
+A ref is a box that React hands you once and never looks into again. Writing to it doesn't render. Reading it gives you the current contents at the moment you read, not the contents from the render the reading function was created in. That second half is what breaks the chain: a function that reads `isFetchingRef.current` doesn't have to be recreated when the flag changes, so `isFetching` disappears from its dependency array, so the effect that depends on the function stops re-running.
+
+The conversion itself is mechanical:
+
+```
+useState(x)      →  useRef(x)
+x                →  xRef.current
+setX(value)      →  xRef.current = value
+```
+
+Apply it to `isFetching`, `intervalId` and `timeoutId`, then go back over the dependency arrays and take out what the linter no longer asks for:
 
 ```tsx
-const performFetch = useCallback(() => {
-  // ...
-}, [stationId, isFetching]);
+const performFetch = useCallback(() => { ... }, [stationId]);
+const cleanup = useCallback(() => { ... }, []);
+useEffect(() => { ... }, [performFetch, isOffline, cleanup]);
+```
 
-const cleanup = useCallback(() => {
-  // ...
-}, [intervalId, timeoutId]);
+Trace the same tick again. `isFetchingRef.current = true`: no render. Response: `setData` → one render. `performFetch` and `cleanup` keep their identity, the effect doesn't re-run, the interval keeps ticking.
 
+### Step 4: The `if (!intervalId)` guard
+
+The original effect only starts an interval if there isn't one. With `intervalId` in state that guard was load-bearing, because the effect re-ran constantly and had to avoid stacking intervals. Now the effect runs on mount and once more when `isOffline` flips, and the cleanup of the previous run has already cleared the interval each time. The guard can go. If you keep it, it costs nothing, but it hides the fact that the effect is now well-behaved.
+
+### Another road: no refs at all
+
+Everything the refs hold is only ever touched by the polling effect and the callbacks it calls. So you can also move the whole thing into one effect and keep the bookkeeping in plain variables:
+
+```tsx
 useEffect(() => {
-  // ...
-}, [performFetch, data?.status, intervalId, cleanup]);
+  if (!stationId || isOffline) return;
+
+  let inFlight = false;
+  let retryId: ReturnType<typeof setTimeout> | null = null;
+
+  const poll = () => {
+    if (inFlight) return;
+    inFlight = true;
+    fetchWeatherReading(stationId)
+      .then((result) => {
+        setData(result);
+        inFlight = false;
+      })
+      .catch(() => {
+        inFlight = false;
+        retryId = setTimeout(poll, 1000);
+      });
+  };
+
+  const intervalId = startPollingInterval(poll, 1000);
+  return () => {
+    stopPollingInterval(intervalId);
+    if (retryId) clearTimeout(retryId);
+  };
+}, [stationId, isOffline]);
 ```
 
-### Step 3: Can you trace the cascade?
-
-Follow what happens when a single fetch completes:
-
-1. `setIsFetching(false)` triggers a re-render
-2. `isFetching` changed, so `performFetch` gets a new identity (its deps changed)
-3. `performFetch` is in the main `useEffect`'s deps, so the effect re-runs
-4. The effect's cleanup fires, which clears the interval
-5. The effect body creates a new interval, calling `setIntervalId`
-6. `setIntervalId` triggers another re-render
-7. `intervalId` changed, so `cleanup` gets a new identity
-8. `cleanup` is in the main `useEffect`'s deps, so the effect re-runs again
-
-One fetch completion causes a chain reaction of re-renders and effect re-runs. The interval keeps getting torn down and recreated.
-
-### Step 4: What if you convert the non-rendered values to refs?
-
-The conversion is mechanical:
-
-```
-useState(x)    →  useRef(x)
-setX(v)        →  xRef.current = v
-x              →  xRef.current
-```
-
-Apply this to `isFetching`, `intervalId`, and `timeoutId`.
-
-### Step 5: Trace the cascade again after converting
-
-Now when a fetch completes:
-
-1. `isFetchingRef.current = false` does NOT trigger a re-render
-2. `performFetch`'s deps are now just `[stationId]`, so it stays stable
-3. `cleanup`'s deps are now `[]` (it reads from refs), so it stays stable
-4. The main `useEffect` doesn't re-run because none of its deps changed
-
-The interval keeps running undisturbed. The only re-renders come from `setData`, which is the one value that actually matters for the UI.
-
-### Step 6: Look at the dependency arrays after the fix
-
-```tsx
-const performFetch = useCallback(() => {
-  // reads isFetchingRef.current — not a dep
-}, [stationId]);
-
-const cleanup = useCallback(() => {
-  // reads intervalIdRef.current, timeoutIdRef.current — not deps
-}, []);
-
-useEffect(() => {
-  // ...
-}, [performFetch, data?.status, cleanup]);
-```
-
-Refs are read at call time, not captured at render time. That's why they don't belong in dependency arrays. The linter won't ask for them either.
+That passes every check in the exercise, and it is arguably the cleaner hook. `let inFlight` inside an effect is a ref in every way that matters: mutable, per instance, invisible to React. The only difference is lifetime. A closure variable lives as long as one run of the effect. A ref lives as long as the component. Reach for the ref when something outside the effect has to see the value: another effect, an event handler, or the next run of the same effect. In the exercise the visibility handler wants to call `performFetch` and respect the in-flight flag, which is exactly that situation. Move the visibility listener into the same effect and the need goes away again. Either shape is fine; what isn't fine is `useState` for a value the screen never sees.
 
 ### Verify
 
-The component should still re-render when new weather data arrives (because `setData` fires). But it should NOT re-render on every fetch cycle just because `isFetching` toggled. The interval should stay stable and never get torn down and recreated mid-polling.
+Reload and watch. `renders` should read 1 while waiting, then climb by one per request. `intervals started` stays at 1. The console shows one `interval #1 started` and nothing else until you click "Take station offline", at which point the next reading says OFFLINE, the console shows `interval cleared`, and `requests sent` stops moving.
+
+To see a retry, watch the console for `Network error`: `requests sent` goes up again about a second later, and `renders` does not, because a failed request never calls `setData`.
 
 ---
 
 ## Exercise B: DebouncedSearch
 
-### Start by listing all the useState calls
+### Step 1: Sort the state
 
-There are six:
+Two questions for each `useState`. Does the UI show it? Does the component have to remember it between renders?
 
-```tsx
-const [inputValue, setInputValue] = useState("");
-const [results, setResults] = useState<string[]>([]);
-const [isSearching, setIsSearching] = useState(false);
-const [currentSearchTerm, setCurrentSearchTerm] = useState("");
-const [timerId, setTimerId] = useState<...>(null);
-const [previousSearchTerm, setPreviousSearchTerm] = useState("");
-const [searchCount, setSearchCount] = useState(0);
-```
+| Variable             | Shown?                    | Remembered?                      |
+| -------------------- | ------------------------- | -------------------------------- |
+| `inputValue`         | yes, the input's value    |                                  |
+| `results`            | yes                       |                                  |
+| `isSearching`        | yes                       |                                  |
+| `previousSearchTerm` | yes                       |                                  |
+| `currentSearchTerm`  | no                        | yes, the next "previous" term    |
+| `timerId`            | no                        | yes, to cancel the pending timer |
+| `searchCount`        | no, it only goes to a log | yes                              |
 
-### Step 1: Which ones are rendered in JSX?
+The first four are state. The last three are remembered but never shown, so they are refs. That's the mechanical part: `timerIdRef`, `searchCountRef`, and the cleanup effect's dependency array becomes `[]` because the cleanup reads the ref when it runs.
 
-Go through the return statement line by line:
-
-- `inputValue` — yes, it's the input's `value`
-- `results` — yes, mapped into `<li>` elements
-- `isSearching` — yes, controls the "Searching..." message
-- `currentSearchTerm` — not directly, but it triggers the render that updates `previousSearchTerm`
-- `timerId` — **no**. Only used in `handleSearch` to clear the previous timer and in the cleanup effect
-- `previousSearchTerm` — yes, displayed in "Previous search: ..."
-- `searchCount` — **no**. Only used in `console.log`
-
-### Step 2: Start with the easy ones. What happens if `timerId` becomes a ref?
-
-`timerId` is never rendered. It's only used to clear the previous timer. Convert it:
-
-```tsx
-const timerIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-```
-
-Now look at the cleanup effect:
-
-```tsx
-useEffect(() => {
-  return () => {
-    if (timerId) {
-      clearTimeout(timerId);
-    }
-  };
-}, [timerId]);
-```
-
-With state, this effect had to re-run every time `timerId` changed (to capture the latest value in its closure). With a ref, the cleanup function reads `timerIdRef.current` at call time. The deps can be `[]`. The effect sets up once on mount and cleans up on unmount. Done.
-
-### Step 3: What about `searchCount`?
-
-`searchCount` is only used in a `console.log`. It never appears in JSX. Every `setSearchCount` call triggers a re-render that produces identical output.
-
-Convert it to a ref. Instead of `setSearchCount(c => c + 1)`, write `searchCountRef.current += 1`. No re-render, same logging behavior.
-
-### Step 4: Now the tricky one. What about `previousSearchTerm`?
-
-This one IS displayed in JSX:
-
-```tsx
-{
-  previousSearchTerm && <p>Previous search: &ldquo;{previousSearchTerm}&rdquo;</p>;
-}
-```
-
-So it seems like it needs to be state. But ask: does it need to be the **trigger** for the render?
-
-Look at what else happens at the same time. When a search completes, `setCurrentSearchTerm(term)` fires, which triggers a re-render. The render that shows the new results will also show the updated previous search term. So `currentSearchTerm` is already triggering the render that `previousSearchTerm` needs.
-
-### Step 5: If you convert it to a ref, when do you update it?
-
-The exercise code uses an effect:
+### Step 2: Why is "Previous search" wrong?
 
 ```tsx
 useEffect(() => {
@@ -187,35 +138,64 @@ useEffect(() => {
 }, [currentSearchTerm]);
 ```
 
-This runs _after_ the render triggered by `setCurrentSearchTerm`. That means it's always one cycle late. The "previous" value is actually the "current" value from the render that just finished.
+The effect runs after the render in which `currentSearchTerm` already holds the new term. So it copies the new term into `previousSearchTerm`. It never had access to the old one: by the time an effect runs, the snapshot it lives in has moved on. That is the same one-render-late mechanism as the state-syncing effects in exercises 02 and 03, only here it doesn't just cost a render, it produces the wrong value.
 
-With a ref, update it **synchronously** in the same callback, **before** calling `setCurrentSearchTerm`:
+### Step 3: Where is the previous term at the moment you need it?
+
+You need it exactly once: when a search completes, right before you record the new term. At that moment the previous term is whatever the last completed search was. So remember that in a ref, and set the state from it:
 
 ```tsx
-previousSearchTermRef.current = currentSearchTerm; // capture "previous"
-setCurrentSearchTerm(term); // trigger render
+setPreviousSearchTerm(lastSearchedTermRef.current);
+lastSearchedTermRef.current = term;
 ```
 
-At this point, `currentSearchTerm` still holds the old value (the one that's about to become "previous"). Assigning it to the ref captures it at exactly the right moment. Then `setCurrentSearchTerm` triggers a re-render. During that render, `previousSearchTermRef.current` holds the correct previous value and `currentSearchTerm` holds the new one.
+`previousSearchTerm` stays state, because it is shown. The effect is gone, and with it the extra render.
 
-### Step 6: Why does updating the ref after `setCurrentSearchTerm` not work?
+Two other shapes do the same job. You can keep both terms in one piece of state and derive the new pair from the old one:
 
-Because `setCurrentSearchTerm` doesn't mutate `currentSearchTerm` immediately. It schedules a re-render. So technically both orderings would capture the same value of `currentSearchTerm` within this callback. But the conceptual point stands: the ref should be updated synchronously in the same event, not in a separate effect that fires a render later.
+```tsx
+const [search, setSearch] = useState({ previous: "", current: "" });
+setSearch((s) => ({ previous: s.current, current: term }));
+```
 
-The effect-based approach was broken because it ran after the render, causing a second render cycle. The ref approach eliminates that entirely.
+This bends the "not shown, so not state" rule a little, since `current` never renders. It is still fine: it changes together with `previous`, the update is batched into the same render, and the functional update guarantees you read the latest value. Pick whichever reads better to you.
+
+### Step 4: The tempting one that isn't
+
+The shape to avoid is making `previousSearchTerm` a ref and reading it in JSX:
+
+```tsx
+previousSearchTermRef.current = currentSearchTerm; // ← from this callback's closure
+setCurrentSearchTerm(term);
+// ...
+{
+  previousSearchTermRef.current && <p>Previous search: ...</p>;
+}
+```
+
+It appears to work, and you will find it in real code. It works only because `setCurrentSearchTerm` happens to trigger a render at the same time; if the ref ever changed on its own, the screen would not follow. React's rule is not to read refs during render for exactly that reason. And there's a second, quieter problem: `currentSearchTerm` here comes from the closure of the keystroke render, which is whatever was current when the user typed, not when the search completed. Type while a search is still in flight and the "previous" term is stale. The ref version in step 3 doesn't have that problem, because it reads the ref at completion time.
 
 ### Verify
 
-After converting `timerId`, `searchCount`, and `previousSearchTerm` to refs:
+Type "re", wait, type "act". The results are for "react" and the line above them says the previous search was "re". Watch the counter on a single search: one tick for the keystroke, one for "Searching...", one for the results. Before the fix there was a fourth, and one more stray render somewhere before the first search: the effect ran on mount, set `previousSearchTerm` to the value it already had, and React still had to run the component once to find that out.
 
-- Typing in the search box should still debounce and show results
-- "Previous search" should display the correct previous term, not the current one
-- The cleanup effect should have empty deps `[]`
-- The `useEffect` that synced `previousSearchTerm` should be deleted entirely
-- The component should re-render less often (no renders from timer ID changes or search count increments)
+Type something and click "Hide search" within 300ms. No `Search #n` line appears in the console.
 
-> **Warning**: reading a ref in JSX works here ONLY because a state change happens at the same time. If the ref changed on its own, the UI would NOT update. This is safe because `setCurrentSearchTerm` always fires alongside the ref update.
+---
+
+## Side notes
+
+### Why doesn't the counter move for `timerId` and `searchCount`?
+
+Because both are set in the same tick as an update that does render: `setTimerId` next to `setInputValue`, `setSearchCount` next to `setIsSearching`. React batches them, so there's no extra render to count. The cost of keeping them in state isn't visible here.
+
+Which is a fair question: then why move them? Two reasons. Intent: a reader of `useState` assumes the screen depends on the value, and it doesn't. And fragility: `handleSearch` only finds the right `timerId` because it is recreated on every render. Wrap it in `useCallback`, as someone will eventually do, and it captures `timerId` as `null` forever, so the debounce stops debouncing. A ref is read at call time and survives that refactor untouched. Exercise A is the same story with the fragility already showing.
+
+### Would React Compiler fix Exercise A?
+
+No. The compiler memoizes: it would write the `useCallback`s for you. It doesn't change what they depend on, and `performFetch` genuinely depends on `isFetching` as long as `isFetching` is state. The renders come from `setState` calls, and no amount of memoization cancels a render that was asked for. Moving a value from state to a ref is a change to what the component considers renderable, and that is a decision only you can make.
 
 ## Key reading
 
 - [Referencing Values with Refs](https://react.dev/learn/referencing-values-with-refs)
+- [Synchronizing with Effects — each render has its own effects](https://react.dev/learn/synchronizing-with-effects#each-render-has-its-own-effects)
