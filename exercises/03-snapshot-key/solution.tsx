@@ -244,6 +244,7 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
   updatePreferences,
   onClose,
 }) => {
+  const renderCount = useRenderCount();
   // Fresh copy on mount — no effect sync needed
   const [state, setState] = useState<NotificationPreferences>(preferences);
 
@@ -271,6 +272,7 @@ export const NotificationSettingsDialog: FunctionComponent<NotificationSettingsP
         Save
       </button>
       <button onClick={onClose}>Cancel</button>
+      <RenderCount count={renderCount} />
     </div>
   );
 };
