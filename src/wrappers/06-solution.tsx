@@ -9,9 +9,9 @@ const recipes = [
 export default function Wrapper() {
   return (
     <>
-      <h2>Part A: Recipe Feed (Problems 1–4)</h2>
+      <h2>A: Recipe Feed</h2>
       <RecipeFeed recipes={recipes} displayMode="card" isExpanded={true} />
-      <h2>Part B: Item List (Problem 5)</h2>
+      <h2>B: Item List</h2>
       <ItemList />
     </>
   );

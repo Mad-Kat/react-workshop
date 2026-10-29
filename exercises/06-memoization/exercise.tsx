@@ -5,13 +5,8 @@
  * Mental model: Memoization is a performance optimization, not a correctness
  * tool. The rule: measure first, memoize second.
  *
- * This file has six performance-related problems. Problems 1–5 are
- * memoization pitfalls — classify each: remove, fix, or move out.
- * Problem 6 is about useDeferredValue — a declarative alternative to
- * debouncing expensive re-renders.
- *
- * Tip: Open React DevTools Profiler while working on Problem 5 to see
- * which components re-render and how long they take.
+ * Tip: the React DevTools Profiler shows which components rendered and how
+ * long each one took.
  *
  * Key reading: https://react.dev/reference/react/useMemo
  */
@@ -22,9 +17,19 @@ import { useRenderCount } from "../useRenderCount";
 import { RenderCount } from "../RenderCount";
 
 // ---------------------------------------------------------------------------
-// Part A: Recipe Feed — four memoization problems
+// Exercise A: Recipe Feed
 //
-// If you get stuck, open guide.md for the three-question checklist.
+// `RecipeFeed` lists recipes as cards or rows, sorted by duration, with a
+// button that flips the sort direction. Every useMemo and useCallback in it
+// was added "for performance".
+//
+// Go through them one by one. For each, work out whether it saves any work
+// at all, and whether that work is worth saving.
+//
+// Done when:
+//   - every useMemo and useCallback left in RecipeFeed skips real work on a
+//     re-render, and you can say what that work is
+//   - the feed looks and sorts exactly as before
 // ---------------------------------------------------------------------------
 
 interface Recipe {
@@ -56,7 +61,6 @@ export const RecipeFeed: FunctionComponent<{
 }> = ({ recipes, displayMode, isExpanded }) => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  // Problem 1: Is this useMemo necessary? What does it actually cache?
   const RecipeComponent = useMemo(() => {
     if (displayMode === "card") {
       return CardView;
@@ -65,7 +69,6 @@ export const RecipeFeed: FunctionComponent<{
     }
   }, [displayMode]);
 
-  // Problem 2: This useMemo isn't caching anything across renders. Why?
   const formatDuration = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}min`;
 
   const annotatedRecipes = useMemo(
@@ -74,16 +77,11 @@ export const RecipeFeed: FunctionComponent<{
         ...r,
         displayDuration: formatDuration(r.durationMinutes),
       })),
-    [recipes, formatDuration], // formatDuration is new every render!
+    [recipes, formatDuration],
   );
 
-  // Problem 3: Is this computation worth memoizing?
   const isContentExpanded = useMemo(() => Boolean(isExpanded), [isExpanded]);
 
-  // Problem 4: This useCallback depends on state, so it changes every
-  // toggle. Can you restructure so no memoization is needed at all?
-  // Hint: if a function doesn't need to close over state, it doesn't
-  // need to live inside the component.
   const sortByDuration = useCallback(
     (a: Recipe, b: Recipe) =>
       sortDirection === "asc"
@@ -110,21 +108,22 @@ export const RecipeFeed: FunctionComponent<{
 };
 
 // ---------------------------------------------------------------------------
-// Part B: ItemCard list — Problems 5 & 6
+// Exercise B: Item List
 //
-// Problem 5: React.memo trap — an inline object prop breaks memoization
+// `ItemList` filters a short list of cards by a search term and highlights
+// the match in each card. A timer above the list ticks once a second.
+// `ItemCard` is deliberately slow to render.
 //
-// The parent re-renders every second (a timer). ItemCard is artificially
-// expensive. React.memo has been applied to prevent unnecessary re-renders,
-// but one card still re-renders every time. Why?
+// Run it. Watch the render badges while the timer ticks, then type quickly
+// into the search box.
 //
-// Hint: look at the `style` prop passed to each ItemCard.
-//
-// Problem 6: No deferred rendering — search input blocked by expensive list
-//
-// A search filter re-renders all ItemCards synchronously on every keystroke,
-// causing input lag. Fix: useDeferredValue on the search term so the input
-// stays responsive while the expensive list renders at lower priority.
+// Done when:
+//   - no card renders when the timer ticks
+//   - what you type shows up in the search box right away, even if the
+//     list needs a moment to catch up
+//   - filtering and highlighting still work
+//   - `ItemCard` is still as slow as it is now: making it faster doesn't
+//     count
 //
 // Key reading: https://react.dev/reference/react/useDeferredValue
 // ---------------------------------------------------------------------------
@@ -149,14 +148,6 @@ const highlightMatch = (text: string, query: string) => {
   );
 };
 
-// Artificially expensive card — simulates a slow component
-// React.memo is ALREADY applied — but the cards still re-render every second. Why?
-//
-// Step 1: React.memo does shallow comparison on all props. Run the exercise
-//         and watch the RenderCount badges increment every second.
-// Step 2: If memo is applied, why is it not working? Look at every prop
-//         being passed to ItemCard. Is every prop referentially stable?
-// Step 3: After fixing, watch the RenderCount badges — they should stay at 1.
 const ItemCard = memo<{
   item: Item;
   query: string;
@@ -192,16 +183,11 @@ export const ItemList: FunctionComponent = () => {
   const [tick, setTick] = useState(0);
   const [search, setSearch] = useState("");
 
-  // Re-renders the parent every second — this should NOT cause ItemCard to re-render
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Problem 6: filtering with raw search state — every keystroke changes the
-  // `query` prop of every visible ItemCard, so they all re-render
-  // synchronously before the input can update.
-  // Fix: use useDeferredValue(search) and filter on the deferred value instead.
   const filteredItems = ITEMS.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase()),
   );
@@ -221,7 +207,6 @@ export const ItemList: FunctionComponent = () => {
           key={item.id}
           item={item}
           query={search}
-          // Problem 5: memo is applied but cards still re-render. Why?
           style={index === 0 ? { border: "1px solid red" } : undefined}
         />
       ))}
