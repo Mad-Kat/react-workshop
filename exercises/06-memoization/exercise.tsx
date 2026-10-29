@@ -135,6 +135,20 @@ interface Item {
   category: string;
 }
 
+// Wraps the part of `text` that matches `query` in <mark>
+const highlightMatch = (text: string, query: string) => {
+  const start = text.toLowerCase().indexOf(query.toLowerCase());
+  if (!query || start === -1) return text;
+  const end = start + query.length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark>{text.slice(start, end)}</mark>
+      {text.slice(end)}
+    </>
+  );
+};
+
 // Artificially expensive card — simulates a slow component
 // React.memo is ALREADY applied — but the cards still re-render every second. Why?
 //
@@ -145,19 +159,20 @@ interface Item {
 // Step 3: After fixing, watch the RenderCount badges — they should stay at 1.
 const ItemCard = memo<{
   item: Item;
+  query: string;
   style?: React.CSSProperties;
-}>(({ item, style }) => {
+}>(({ item, query, style }) => {
   const renderCount = useRenderCount();
 
   // Simulate expensive render work
-  const end = performance.now() + 8;
+  const end = performance.now() + 200;
   while (performance.now() < end) {
     // deliberate busy-wait
   }
 
   return (
     <div style={style} className="item-card">
-      <strong>{item.name}</strong>
+      <strong>{highlightMatch(item.name, query)}</strong>
       <span>{item.category}</span>
       <RenderCount count={renderCount} />
     </div>
@@ -183,8 +198,9 @@ export const ItemList: FunctionComponent = () => {
     return () => clearInterval(id);
   }, []);
 
-  // Problem 6: filtering with raw search state — every keystroke triggers
-  // a synchronous re-render of all expensive ItemCards, blocking the input.
+  // Problem 6: filtering with raw search state — every keystroke changes the
+  // `query` prop of every visible ItemCard, so they all re-render
+  // synchronously before the input can update.
   // Fix: use useDeferredValue(search) and filter on the deferred value instead.
   const filteredItems = ITEMS.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase()),
@@ -204,6 +220,7 @@ export const ItemList: FunctionComponent = () => {
         <ItemCard
           key={item.id}
           item={item}
+          query={search}
           // Problem 5: memo is applied but cards still re-render. Why?
           style={index === 0 ? { border: "1px solid red" } : undefined}
         />

@@ -92,23 +92,38 @@ interface Item {
   category: string;
 }
 
+// Wraps the part of `text` that matches `query` in <mark>
+const highlightMatch = (text: string, query: string) => {
+  const start = text.toLowerCase().indexOf(query.toLowerCase());
+  if (!query || start === -1) return text;
+  const end = start + query.length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark>{text.slice(start, end)}</mark>
+      {text.slice(end)}
+    </>
+  );
+};
+
 // Fix 5: ItemCard is already wrapped in React.memo (see exercise file). The fix is
 // extracting the inline style object to a stable reference — see FEATURED_CARD_STYLE below.
 const ItemCard = memo<{
   item: Item;
+  query: string;
   style?: React.CSSProperties;
-}>(({ item, style }) => {
+}>(({ item, query, style }) => {
   const renderCount = useRenderCount();
 
   // Simulate expensive render work
-  const end = performance.now() + 8;
+  const end = performance.now() + 200;
   while (performance.now() < end) {
     // deliberate busy-wait
   }
 
   return (
     <div style={style} className="item-card">
-      <strong>{item.name}</strong>
+      <strong>{highlightMatch(item.name, query)}</strong>
       <span>{item.category}</span>
       <RenderCount count={renderCount} />
     </div>
@@ -165,6 +180,9 @@ export const ItemList: FunctionComponent = () => {
         <ItemCard
           key={item.id}
           item={item}
+          // Deferred too — during the urgent render the cards see the old
+          // query, so React.memo skips them and the input updates instantly
+          query={deferredSearch}
           // Stable reference — React.memo's shallow comparison now works
           style={index === 0 ? FEATURED_CARD_STYLE : undefined}
         />

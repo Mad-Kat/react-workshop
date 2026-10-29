@@ -167,11 +167,11 @@ After fixing, watch the RenderCount badges. They should stay at 1 even as the ti
 
 ### Problem 6: Input lag from synchronous filtering
 
-Type in the search box. Every keystroke triggers a synchronous re-render of all `ItemCard` components. Since each card has an artificial 8ms busy wait, the input feels sluggish.
+Type in the search box. Every card highlights the part of its name that matches the search, so every keystroke changes the `query` prop of every visible `ItemCard` and they all re-render synchronously. Since each card has an artificial 200ms busy wait, the input feels sluggish.
 
 ### Step 14: What is happening on each keystroke?
 
-The `search` state updates, the component re-renders, the filter runs, and all matching `ItemCard` components render synchronously before the browser can update the input. The input feels frozen until the expensive render finishes.
+The `search` state updates, the component re-renders, the filter runs, and all matching `ItemCard` components render synchronously before the browser can update the input. `React.memo` can't help here: `query` really did change. The input feels frozen until the expensive render finishes.
 
 ### Step 15: How do you keep the input responsive while the list catches up?
 
@@ -183,9 +183,12 @@ const deferredSearch = useDeferredValue(search);
 const filteredItems = ITEMS.filter((item) =>
   item.name.toLowerCase().includes(deferredSearch.toLowerCase()),
 );
+
+// ...and pass the deferred value to the cards as well
+<ItemCard key={item.id} item={item} query={deferredSearch} style={...} />;
 ```
 
-React renders with the old `deferredSearch` immediately (so the input updates instantly), then re-renders with the new value at lower priority. If the user types again before the deferred render finishes, React abandons it and starts over. No wasted work, no input lag.
+React renders with the old `deferredSearch` immediately, then re-renders with the new value at lower priority. In that first render every card gets the same props as before, so `React.memo` (fixed in Problem 5) skips them all and the input updates instantly. `useDeferredValue` and `React.memo` work as a pair: without the memo, the urgent render would be just as slow. If the user types again before the deferred render finishes, React abandons it and starts over. No wasted work, no input lag.
 
 ### Valid alternative: useTransition
 
