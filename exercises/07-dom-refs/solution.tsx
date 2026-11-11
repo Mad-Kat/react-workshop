@@ -5,8 +5,8 @@
 
 import {
   type FunctionComponent,
+  type ReactNode,
   type Ref,
-  useCallback,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -14,13 +14,13 @@ import {
 } from "react";
 
 // ---------------------------------------------------------------------------
-// Solution A: FancyInput with ref as a regular prop + useImperativeHandle
+// Solution A: FancyInput
 //
-// >> INSTRUCTOR: React 19 deprecates forwardRef. Function components now accept
-// >> `ref` as a regular prop. This is a significant API simplification — show
-// >> the old forwardRef wrapper for context, then point out how much cleaner
-// >> the new version is. Our codebase still uses forwardRef in many places;
-// >> new code should use the ref-as-prop pattern.
+// Since React 19, `ref` is a regular prop on function components, so
+// FancyInput takes it like any other prop, without a forwardRef wrapper.
+// useImperativeHandle decides what the parent's ref ends up holding: an object
+// with focus() and clear(), built on top of a ref to the <input> that never
+// leaves the component.
 // ---------------------------------------------------------------------------
 
 export interface FancyInputHandle {
@@ -28,7 +28,6 @@ export interface FancyInputHandle {
   clear: () => void;
 }
 
-// React 19+: ref is just a prop — no forwardRef wrapper needed
 export const FancyInput: FunctionComponent<{
   placeholder?: string;
   ref?: Ref<FancyInputHandle>;
@@ -36,7 +35,8 @@ export const FancyInput: FunctionComponent<{
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Expose only focus() and clear() — not the full DOM node
+  // `setValue` and `inputRef` never change, so the handle never has to be
+  // rebuilt.
   useImperativeHandle(
     ref,
     () => ({
@@ -61,76 +61,153 @@ export const FancyInput: FunctionComponent<{
   );
 };
 
-// Parent using the handle
 export const FancyInputDemo: FunctionComponent = () => {
   const fancyInputRef = useRef<FancyInputHandle>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [inputWidth, setInputWidth] = useState<number | null>(null);
-
-  // useLayoutEffect fires synchronously after DOM mutations but BEFORE paint.
-  // This means the width is measured and set before the user ever sees
-  // "measuring..." — no flash.
-  //
-  // If this were useEffect, the user would briefly see "measuring..." then
-  // the width — a visible flash. useLayoutEffect avoids this because React
-  // waits for it to finish before handing control to the browser to paint.
-  //
-  // Rule of thumb: useEffect for most side effects (data fetching, subscriptions).
-  // useLayoutEffect ONLY when you need to measure/mutate the DOM before paint.
-  useLayoutEffect(() => {
-    const input = containerRef.current?.querySelector("input");
-    if (input) {
-      setInputWidth(input.getBoundingClientRect().width);
-    }
-  }, []);
 
   return (
-    <div ref={containerRef}>
+    <div>
       <FancyInput ref={fancyInputRef} placeholder="Type here..." />
-      <button onClick={() => fancyInputRef.current?.clear}>Focus</button>
+      <button onClick={() => fancyInputRef.current?.focus()}>Focus</button>
       <button onClick={() => fancyInputRef.current?.clear()}>Clear</button>
-      <p>Input width: {inputWidth !== null ? `${inputWidth}px` : "measuring..."}</p>
     </div>
   );
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: ScrollSafeInput with ref callback + cleanup return
+// Solution B: Hint Bubble
 //
-// >> INSTRUCTOR: React 19 ref callbacks can return a cleanup function.
-// >> The callback is only called with the node (never null). Detach is
-// >> handled by the returned cleanup. Before React 19, the callback was
-// >> called with null on unmount, which was confusing and error-prone.
+// The bubble's height only exists once the bubble is in the DOM, and during
+// render it isn't yet: on the first render `bubbleRef.current` is null. So
+// the height is measured after commit and kept in state, and the bubble is
+// placed on the render that follows.
 //
-// The ref callback receives the DOM node when attached. Return a cleanup
-// function to run on detach. No useEffect needed, no null check needed.
+// useLayoutEffect runs after React has written to the DOM but before the
+// browser paints. A state update inside it is rendered right away, still
+// before the paint, so the first frame the browser shows already has the
+// bubble in the right place. useEffect would let the browser paint the
+// unmeasured bubble first, on top of the button, and move it one slow
+// render later.
 // ---------------------------------------------------------------------------
+
+const GAP = 8;
+
+const HintBubble: FunctionComponent<{
+  targetRect: DOMRect;
+  children: ReactNode;
+}> = ({ targetRect, children }) => {
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+
+  // Simulate expensive render work
+  const end = performance.now() + 150;
+  while (performance.now() < end) {
+    // deliberate busy-wait
+  }
+
+  // Measure before the browser paints, so the unmeasured bubble is never seen
+  useLayoutEffect(() => {
+    if (bubbleRef.current) {
+      setHeight(bubbleRef.current.offsetHeight);
+    }
+  }, []);
+
+  // Above the button if it fits, below it if it doesn't
+  const fitsAbove = targetRect.top - GAP - height >= 0;
+  const top = fitsAbove ? targetRect.top - GAP - height : targetRect.bottom + GAP;
+
+  return (
+    <div
+      ref={bubbleRef}
+      role="tooltip"
+      style={{
+        position: "fixed",
+        top,
+        left: targetRect.left,
+        width: 240,
+        padding: "6px 10px",
+        borderRadius: 6,
+        background: "#222",
+        color: "#fff",
+        fontSize: 13,
+        pointerEvents: "none",
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Unchanged: reading the button's position in an event handler is safe,
+// because by the time the user can hover it, it has long been committed.
+export const HintButton: FunctionComponent<{
+  label: string;
+  hint: string;
+}> = ({ label, hint }) => {
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  return (
+    <>
+      <button
+        onMouseEnter={(e) => setTargetRect(e.currentTarget.getBoundingClientRect())}
+        onMouseLeave={() => setTargetRect(null)}
+      >
+        {label}
+      </button>
+      {targetRect && <HintBubble targetRect={targetRect}>{hint}</HintBubble>}
+    </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Solution C: Scroll-Safe Input
+//
+// The effect ran once, on mount, when the editor was closed and there was no
+// <div> to attach to. A ref callback is tied to the node instead of to the
+// component: React calls it when the <div> is attached, and since it returns
+// a cleanup function (React 19+), calls that cleanup when the <div> is
+// detached. However often the editor opens and closes, the listener comes
+// and goes with the <div>, and nothing here mentions `isEditing`.
+//
+// The callback has to keep its identity between renders. A new function on
+// every render would make React detach and re-attach the listener each time.
+// This one uses nothing from the component, so it lives at module level. One
+// that needs props or state would go into useCallback.
+// ---------------------------------------------------------------------------
+
+const swallowWheelWhileFocused = (container: HTMLDivElement) => {
+  const listener = (event: WheelEvent) => {
+    if (container.matches(":focus-within")) {
+      event.preventDefault();
+    }
+  };
+
+  container.addEventListener("wheel", listener, { passive: false });
+  return () => container.removeEventListener("wheel", listener);
+};
 
 export const ScrollSafeInput: FunctionComponent<{
   value: number;
   onChange: (value: number) => void;
 }> = ({ value, onChange }) => {
-  // Ref callback with cleanup return (React 19+)
-  // In React 19, the callback is only called with the node on attach.
-  // It is never called with null — cleanup is handled by the return function.
-  const containerRef = useCallback((container: HTMLDivElement) => {
-    const listener = (event: WheelEvent) => {
-      if (container.matches(":focus-within")) {
-        event.preventDefault();
-      }
-    };
+  const [isEditing, setIsEditing] = useState(false);
 
-    container.addEventListener("wheel", listener, { passive: false });
-
-    // React 19: return a cleanup function (replaces the old "called with null" pattern)
-    return () => {
-      container.removeEventListener("wheel", listener);
-    };
-  }, []);
+  if (!isEditing) {
+    return (
+      <p>
+        Quantity: {value} <button onClick={() => setIsEditing(true)}>Edit</button>
+      </p>
+    );
+  }
 
   return (
-    <div ref={containerRef}>
-      <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    <div ref={swallowWheelWhileFocused}>
+      <input
+        type="number"
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <button onClick={() => setIsEditing(false)}>Done</button>
     </div>
   );
 };
@@ -138,23 +215,23 @@ export const ScrollSafeInput: FunctionComponent<{
 /**
  * Notes on the APIs used here:
  *
- * 1. ref as a regular prop (React 19+): no more forwardRef wrapper.
+ * 1. ref as a regular prop (React 19+): no forwardRef wrapper needed.
  *    Old: const FancyInput = forwardRef((props, ref) => { ... })
  *    New: const FancyInput = ({ ref, ...props }) => { ... }
- *    forwardRef still works but is deprecated. New code should use ref-as-prop.
+ *    forwardRef still works. React plans to deprecate it in a future release.
  *
- * 2. Ref callback cleanup (React 19+): return a cleanup function.
- *    Old: called with null on unmount (had to guard with if (!node) return)
- *    New: callback receives the node (never null), return () => { cleanup() }
- *    The callback is only called on attach. Detach is handled by the return.
+ * 2. Ref callback cleanup (React 19+): a ref callback may return a cleanup
+ *    function. If it does, React calls the cleanup on detach instead of
+ *    calling the callback with null. If it doesn't, React still calls it
+ *    with null on detach, like before.
  *
- * 3. useImperativeHandle: expose a custom API, not the raw DOM node.
- *    This is a deliberate API boundary — the parent gets specific methods.
+ * 3. useImperativeHandle: the parent's ref holds an object you build, not the
+ *    DOM node. A deliberate API boundary.
  *
- * 4. useLayoutEffect: runs synchronously after DOM mutation, before paint.
- *    Use it for DOM measurements (getBoundingClientRect, offsetHeight, etc.)
- *    that must be reflected in the same paint. useEffect would cause a flash.
- *    Rule: default to useEffect; only use useLayoutEffect when you see a flash.
+ * 4. useLayoutEffect: runs after React writes to the DOM, before the browser
+ *    paints, and state updates inside it are rendered before the paint too.
+ *    For measurements that decide what the first frame looks like. It blocks
+ *    the paint, so default to useEffect.
  *
  * Real codebase references:
  *   - libraries/community-comment-form/src/communityCommentForm.tsx: forwardRef + useImperativeHandle (legacy)

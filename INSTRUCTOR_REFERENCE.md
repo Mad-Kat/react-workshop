@@ -36,15 +36,15 @@ No codebase source — this is a foundational mental model exercise.
 
 ## Exercise 03: State as Snapshot & Key Trick
 
-| Exercise                         | Anti-Pattern                                  | Original File                                                                                   |
-| -------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| A1 — Font Size Picker            | Effect-based reset on prop change             | `domains/archived-orders/src/overview/datePicker.tsx`                                           |
-| A2 — Font Size Picker, draft     | Same, but the state can't be deleted          | Variant of the same file, commit-on-blur instead of commit-on-keystroke                          |
-| B — Notification Settings Dialog | Editable copy pattern with effect sync        | `domains/cookie-compliance/src/settings/dialog/useCookieSettingsHelper.tsx` (lines 65, 186–188) |
+| Exercise                         | Anti-Pattern                           | Original File                                                                                   |
+| -------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| A1 — Font Size Picker            | Effect-based reset on prop change      | `domains/archived-orders/src/overview/datePicker.tsx`                                           |
+| A2 — Font Size Picker, draft     | Same, but the state can't be deleted   | Variant of the same file, commit-on-blur instead of commit-on-keystroke                         |
+| B — Notification Settings Dialog | Editable copy pattern with effect sync | `domains/cookie-compliance/src/settings/dialog/useCookieSettingsHelper.tsx` (lines 65, 186–188) |
 
 Also referenced: `segments/carousel-solo-slide/src/carousel.tsx` (lines 31–49) — controlled/uncontrolled hybrid
 
-**Note on A1 — expect this, don't correct it:** most participants fix A1 by deleting the `useEffect` _and_ the `useState`, binding the input to the prop. That is the better answer, not a shortcut: A1's state is redundant because every keystroke commits upward, and React's own ordering is derive/lift before `key`. Confirm it, then send them to A2. Note for the demo: A1's `key` solution loses input focus on *every keystroke* (each keystroke commits a new `fontSize`, so the key changes and the input remounts), which makes it unusable for typing — drive it with the preset buttons only, and use that as the argument for why the deletion is the better fix here. A2 commits on blur instead, so the draft holds strings the prop cannot (`"1."`, `""`); the deletion route is closed and `key` is the fix. A2 also carries the point that a `key` must identify the _occasion to reset_ — keying on `selectedFontSize` only works because typing no longer changes it.
+**Note on A1 — expect this, don't correct it:** most participants fix A1 by deleting the `useEffect` _and_ the `useState`, binding the input to the prop. That is the better answer, not a shortcut: A1's state is redundant because every keystroke commits upward, and React's own ordering is derive/lift before `key`. Confirm it, then send them to A2. Note for the demo: A1's `key` solution loses input focus on _every keystroke_ (each keystroke commits a new `fontSize`, so the key changes and the input remounts), which makes it unusable for typing — drive it with the preset buttons only, and use that as the argument for why the deletion is the better fix here. A2 commits on blur instead, so the draft holds strings the prop cannot (`"1."`, `""`); the deletion route is closed and `key` is the fix. A2 also carries the point that a `key` must identify the _occasion to reset_ — keying on `selectedFontSize` only works because typing no longer changes it.
 
 **Note:** Wrapper includes "Simulate external update" button so participants can see the effect-based reset wipe their edits (exercise) vs the key trick remounting cleanly (solution).
 
@@ -98,9 +98,16 @@ Also referenced:
 | Exercise            | Pattern                                      | Original File                                                   |
 | ------------------- | -------------------------------------------- | --------------------------------------------------------------- |
 | A — FancyInput      | ref as prop (React 19) + useImperativeHandle | `libraries/community-comment-form/src/communityCommentForm.tsx` |
-| B — ScrollSafeInput | Ref callback with cleanup return (React 19)  | `blocks/form/src/components/inputField/inputField.tsx`          |
+| B — HintBubble      | Measure before paint with useLayoutEffect    | Generic pattern (tooltip / popover placement)                   |
+| C — ScrollSafeInput | Ref callback with cleanup return (React 19)  | `blocks/form/src/components/inputField/inputField.tsx`          |
 
-**Format:** Build from scratch. Participants are given the parent component that calls `ref.focus()` and `ref.clear()`, and must implement `FancyInput` with `useImperativeHandle`.
+**Format:** Problem + `Done when:` list, like 04 and 06. A is build-from-scratch: the Focus and Clear buttons do nothing, and participants add the `ref` prop and `useImperativeHandle`. B and C are bugs to fix. `exercise.test.tsx` runs the lists in the browser: 8 of 10 fail on `exercise.tsx`, all 10 pass on `solution.tsx`. A `useEffect` fix for B fails exactly one test, "never seen anywhere else".
+
+**A:** Show the old `forwardRef` wrapper for context. It still works and the codebase uses it in many places, but React 19 doesn't need it and plans to deprecate it. New code should use ref-as-prop. Worth discussing: lifting the value into the form is the more "React" answer when the form needs the value. The handle is for things that aren't state (focus, scroll, media).
+
+**B:** The starting code reads `bubbleRef.current?.offsetHeight` during render, which is `null` on the bubble's first render, so the bubble covers the button. Expected route: `useEffect` + state → visible flash → `useLayoutEffect`. `HintBubble` busy-waits 150ms per render so the flash lasts long enough to see. The bubble is opened by **hover on purpose**: for discrete events (click, keydown) React flushes passive effects before paint, so a click-triggered version would not flash with `useEffect` and the demo would fall flat. The reading of `getBoundingClientRect()` in `onMouseEnter` is the "safe in event handlers" half of the mental model. To show the flip, scroll the buttons to the top of the window. The wrapper has a spacer for that.
+
+**C:** The editor's `<div>` only exists after clicking Edit, so the `[]` effect finds `null` and never attaches the listener. `[isEditing]` deps also pass the tests. The guide covers it as the fragile alternative, and the last `Done when` line rules it out. Demo in **Chrome**: as far as we know, other browsers may not change a focused number input on wheel, so the bug shows nothing there. React 19 nuance worth stating precisely: a ref callback is only spared the `null` call when it returns a cleanup function. Without one, React 19 still calls it with `null` on detach.
 
 ---
 
