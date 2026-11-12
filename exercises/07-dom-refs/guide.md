@@ -74,7 +74,70 @@ If the form needed to _know_ the value, the React answer would be to lift it: th
 
 ---
 
-## Exercise B: Hint Bubble
+## Exercise B: Scroll-Safe Input
+
+### Step 1: Why doesn't the listener work?
+
+Look at when the effect runs and what it finds:
+
+```tsx
+useEffect(() => {
+  const container = containerRef.current;
+  if (!container) return;
+  ...
+}, []);
+```
+
+Empty dependencies: it runs once, after the first render. The first render is the closed editor, `Quantity: 2 [Edit]`, and there's no `<div ref={containerRef}>` in it. `containerRef.current` is `null`, the effect returns early, and it never runs again. When you click Edit, the `<div>` appears, React fills in `containerRef`, and nobody is looking.
+
+The ref and the effect are two separate things, and nothing ties the effect to the moment the node appears.
+
+### Step 2: The tempting fix
+
+Add `isEditing` to the dependencies:
+
+```tsx
+useEffect(() => { ... }, [isEditing]);
+```
+
+It works: every time the editor opens or closes, the effect runs again and finds the `<div>`, or doesn't. But now the effect has to know every reason the `<div>` might come or go. Add a loading state that hides the editor, or move the `<div>` into a child component that decides for itself when to render it, and the effect quietly breaks again. That's what the last line of "Done when" rules out.
+
+### Step 3: A ref callback
+
+Instead of a ref object, `ref` also takes a function. React calls it with the DOM node at the moment it attaches the node: after React has written to the DOM, before the browser paints. Since React 19, the function can return a cleanup, and React calls that when the node is detached:
+
+```tsx
+const swallowWheelWhileFocused = (container: HTMLDivElement) => {
+  const listener = (event: WheelEvent) => {
+    if (container.matches(":focus-within")) {
+      event.preventDefault();
+    }
+  };
+
+  container.addEventListener("wheel", listener, { passive: false });
+  return () => container.removeEventListener("wheel", listener);
+};
+
+<div ref={swallowWheelWhileFocused}>
+```
+
+The listener's lifetime is now the `<div>`'s lifetime, whatever makes the `<div>` appear. No effect, no ref object, no `null` check, and `isEditing` doesn't appear anywhere in it.
+
+About that `null`: before React 19, ref callbacks had no cleanup, so React called them a second time with `null` on detach, and every ref callback started with `if (!node) return`. In React 19 that's still what happens when the callback returns nothing. Return a cleanup function and React calls the cleanup instead, and the callback only ever sees a real node.
+
+### Step 4: Why is it outside the component?
+
+React compares the ref callback with the one from the previous render. If it's a different function, React runs the old cleanup and calls the new callback, even though the node didn't change. A function written inline in the component is a new function on every render, so the listener would be removed and added on every render.
+
+This callback doesn't use any props or state, so it can live at module level and is the same function forever. If it did need something from the component, say an `onWheelBlocked` prop, it would go inside the component wrapped in `useCallback`, with that prop in its dependencies.
+
+### Why `{ passive: false }`
+
+React registers its own `wheel` listener as passive, which means `preventDefault()` in an `onWheel` handler is ignored (the browser warns about it in the console). So `<div onWheel={...}>` can't stop the number from changing, and that's why this is an `addEventListener` call at all and not a JSX prop. `{ passive: false }` makes sure this listener is allowed to call `preventDefault()`.
+
+---
+
+## Exercise C (optional): Hint Bubble
 
 ### Step 1: Why does the bubble land on the button?
 
@@ -138,7 +201,7 @@ React treats discrete events like click and keydown differently: for those, it r
 
 ### Another road: a ref callback
 
-A ref callback runs at the same moment as a layout effect, so measuring there works too:
+The ref callback from B runs at the same moment as a layout effect, so measuring there works too:
 
 ```tsx
 const measure = useCallback((node: HTMLDivElement) => setHeight(node.offsetHeight), []);
@@ -148,69 +211,6 @@ const measure = useCallback((node: HTMLDivElement) => setHeight(node.offsetHeigh
 ### When you don't need to measure at all
 
 If the bubble only ever went above the button, CSS could do it with no measurement: position the bubble by its `bottom` edge (`bottom: window.innerHeight - targetRect.top + 8`) and let it grow upwards. Flipping below when there's no room is what makes the height necessary. CSS anchor positioning (`position-try-fallbacks`) can do the flip too in browsers that support it. When CSS can do the layout, let CSS do it. `useLayoutEffect` is for when it can't.
-
----
-
-## Exercise C: Scroll-Safe Input
-
-### Step 1: Why doesn't the listener work?
-
-Look at when the effect runs and what it finds:
-
-```tsx
-useEffect(() => {
-  const container = containerRef.current;
-  if (!container) return;
-  ...
-}, []);
-```
-
-Empty dependencies: it runs once, after the first render. The first render is the closed editor, `Quantity: 2 [Edit]`, and there's no `<div ref={containerRef}>` in it. `containerRef.current` is `null`, the effect returns early, and it never runs again. When you click Edit, the `<div>` appears, React fills in `containerRef`, and nobody is looking.
-
-The ref and the effect are two separate things, and nothing ties the effect to the moment the node appears.
-
-### Step 2: The tempting fix
-
-Add `isEditing` to the dependencies:
-
-```tsx
-useEffect(() => { ... }, [isEditing]);
-```
-
-It works: every time the editor opens or closes, the effect runs again and finds the `<div>`, or doesn't. But now the effect has to know every reason the `<div>` might come or go. Add a loading state that hides the editor, or move the `<div>` into a child component that decides for itself when to render it, and the effect quietly breaks again. That's what the last line of "Done when" rules out.
-
-### Step 3: A ref callback
-
-Instead of a ref object, `ref` also takes a function. React calls it with the DOM node at the moment it attaches the node, in the same phase as layout effects. Since React 19, the function can return a cleanup, and React calls that when the node is detached:
-
-```tsx
-const swallowWheelWhileFocused = (container: HTMLDivElement) => {
-  const listener = (event: WheelEvent) => {
-    if (container.matches(":focus-within")) {
-      event.preventDefault();
-    }
-  };
-
-  container.addEventListener("wheel", listener, { passive: false });
-  return () => container.removeEventListener("wheel", listener);
-};
-
-<div ref={swallowWheelWhileFocused}>
-```
-
-The listener's lifetime is now the `<div>`'s lifetime, whatever makes the `<div>` appear. No effect, no ref object, no `null` check, and `isEditing` doesn't appear anywhere in it.
-
-About that `null`: before React 19, ref callbacks had no cleanup, so React called them a second time with `null` on detach, and every ref callback started with `if (!node) return`. In React 19 that's still what happens when the callback returns nothing. Return a cleanup function and React calls the cleanup instead, and the callback only ever sees a real node.
-
-### Step 4: Why is it outside the component?
-
-React compares the ref callback with the one from the previous render. If it's a different function, React runs the old cleanup and calls the new callback, even though the node didn't change. A function written inline in the component is a new function on every render, so the listener would be removed and added on every render.
-
-This callback doesn't use any props or state, so it can live at module level and is the same function forever. If it did need something from the component, say an `onWheelBlocked` prop, it would go inside the component wrapped in `useCallback`, with that prop in its dependencies.
-
-### Why `{ passive: false }`
-
-React registers its own `wheel` listener as passive, which means `preventDefault()` in an `onWheel` handler is ignored (the browser warns about it in the console). So `<div onWheel={...}>` can't stop the number from changing, and that's why this is an `addEventListener` call at all and not a JSX prop. `{ passive: false }` makes sure this listener is allowed to call `preventDefault()`.
 
 ## Key reading
 

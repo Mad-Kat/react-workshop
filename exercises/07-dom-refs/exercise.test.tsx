@@ -93,7 +93,69 @@ for (const [target, load] of Object.entries(targets)) {
       });
     });
 
-    describe("B: Hint Bubble", () => {
+    describe("B: Scroll-Safe Input", () => {
+      const Quantity = () => {
+        const [quantity, setQuantity] = useState(2);
+        return <mod.ScrollSafeInput value={quantity} onChange={setQuantity} />;
+      };
+
+      const openEditor = async (screen: Screen) => {
+        button(screen, "Edit").click();
+        await expect.element(screen.getByRole("spinbutton")).toBeInTheDocument();
+        return screen.getByRole("spinbutton").element() as HTMLInputElement;
+      };
+
+      const closeEditor = async (screen: Screen) => {
+        button(screen, "Done").click();
+        await expect.element(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+      };
+
+      /**
+       * Scrolls over the input. Changing the number is the browser's default
+       * action for the wheel event, so it doesn't change if and only if the
+       * event's default was prevented.
+       */
+      const wheelChangesNumber = (input: HTMLInputElement) => {
+        input.focus();
+        const wheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 });
+        input.dispatchEvent(wheel);
+        return !wheel.defaultPrevented;
+      };
+
+      test("scrolling over the focused input doesn't change the number", async () => {
+        const screen = await render(<Quantity />);
+        const input = await openEditor(screen);
+
+        expect(wheelChangesNumber(input)).toBe(false);
+      });
+
+      test("…however often you open and close the editor", async () => {
+        const screen = await render(<Quantity />);
+
+        for (let round = 1; round <= 3; round++) {
+          const input = await openEditor(screen);
+          expect(wheelChangesNumber(input), `round ${round}`).toBe(false);
+          await closeEditor(screen);
+        }
+      });
+
+      test("closing the editor leaves no wheel listener behind", async () => {
+        const screen = await render(<Quantity />);
+        const added = vi.spyOn(EventTarget.prototype, "addEventListener");
+        const removed = vi.spyOn(EventTarget.prototype, "removeEventListener");
+        const wheelCalls = (spy: typeof added) =>
+          spy.mock.calls.filter(([type]) => type === "wheel").length;
+
+        for (let round = 1; round <= 3; round++) {
+          await openEditor(screen);
+          await closeEditor(screen);
+        }
+
+        expect(wheelCalls(added) - wheelCalls(removed)).toBe(0);
+      });
+    });
+
+    describe("C (optional): Hint Bubble", () => {
       const SHORT_HINT = "Ships tomorrow.";
       const LONG_HINT =
         "Free returns within 30 days. Bring it to any store, or send it back " +
@@ -189,68 +251,6 @@ for (const [target, load] of Object.entries(targets)) {
             `bubble bottom, update ${i + 1}`,
           );
         }
-      });
-    });
-
-    describe("C: Scroll-Safe Input", () => {
-      const Quantity = () => {
-        const [quantity, setQuantity] = useState(2);
-        return <mod.ScrollSafeInput value={quantity} onChange={setQuantity} />;
-      };
-
-      const openEditor = async (screen: Screen) => {
-        button(screen, "Edit").click();
-        await expect.element(screen.getByRole("spinbutton")).toBeInTheDocument();
-        return screen.getByRole("spinbutton").element() as HTMLInputElement;
-      };
-
-      const closeEditor = async (screen: Screen) => {
-        button(screen, "Done").click();
-        await expect.element(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-      };
-
-      /**
-       * Scrolls over the input. Changing the number is the browser's default
-       * action for the wheel event, so it doesn't change if and only if the
-       * event's default was prevented.
-       */
-      const wheelChangesNumber = (input: HTMLInputElement) => {
-        input.focus();
-        const wheel = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 });
-        input.dispatchEvent(wheel);
-        return !wheel.defaultPrevented;
-      };
-
-      test("scrolling over the focused input doesn't change the number", async () => {
-        const screen = await render(<Quantity />);
-        const input = await openEditor(screen);
-
-        expect(wheelChangesNumber(input)).toBe(false);
-      });
-
-      test("…however often you open and close the editor", async () => {
-        const screen = await render(<Quantity />);
-
-        for (let round = 1; round <= 3; round++) {
-          const input = await openEditor(screen);
-          expect(wheelChangesNumber(input), `round ${round}`).toBe(false);
-          await closeEditor(screen);
-        }
-      });
-
-      test("closing the editor leaves no wheel listener behind", async () => {
-        const screen = await render(<Quantity />);
-        const added = vi.spyOn(EventTarget.prototype, "addEventListener");
-        const removed = vi.spyOn(EventTarget.prototype, "removeEventListener");
-        const wheelCalls = (spy: typeof added) =>
-          spy.mock.calls.filter(([type]) => type === "wheel").length;
-
-        for (let round = 1; round <= 3; round++) {
-          await openEditor(screen);
-          await closeEditor(screen);
-        }
-
-        expect(wheelCalls(added) - wheelCalls(removed)).toBe(0);
       });
     });
   });

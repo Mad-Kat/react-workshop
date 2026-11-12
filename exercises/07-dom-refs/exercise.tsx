@@ -54,7 +54,69 @@ export const FancyInputDemo: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Exercise B: Hint Bubble
+// Exercise B: Scroll-Safe Input
+//
+// A quantity you change by clicking Edit. Number inputs change their value
+// when you scroll over them while they have focus, so someone scrolling down
+// the page could change the quantity without noticing. While the input has
+// focus, the wheel is supposed to do nothing at all.
+//
+// Click Edit, keep the mouse over the number and scroll. The number changes.
+//
+// Done when:
+//   - scrolling over the focused input never changes the number, however
+//     often you open and close the editor
+//   - closing the editor leaves no wheel listener behind
+//   - the code that adds the listener doesn't need to know why the <div>
+//     comes and goes: if the <div> gets another reason to appear or
+//     disappear later, that code doesn't change
+// ---------------------------------------------------------------------------
+
+export const ScrollSafeInput: FunctionComponent<{
+  value: number;
+  onChange: (value: number) => void;
+}> = ({ value, onChange }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Swallow wheel events while the input has focus
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const listener = (event: WheelEvent) => {
+      if (container.matches(":focus-within")) {
+        event.preventDefault();
+      }
+    };
+
+    container.addEventListener("wheel", listener, { passive: false });
+    return () => container.removeEventListener("wheel", listener);
+  }, []);
+
+  if (!isEditing) {
+    return (
+      <p>
+        Quantity: {value} <button onClick={() => setIsEditing(true)}>Edit</button>
+      </p>
+    );
+  }
+
+  return (
+    <div ref={containerRef}>
+      <input
+        type="number"
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <button onClick={() => setIsEditing(false)}>Done</button>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Exercise C (optional): Hint Bubble
 //
 // Hovering a `HintButton` shows its hint in a bubble just above the button,
 // or just below it when there isn't room above. How tall the bubble is
@@ -130,67 +192,5 @@ export const HintButton: FunctionComponent<{
       </button>
       {targetRect && <HintBubble targetRect={targetRect}>{hint}</HintBubble>}
     </>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Exercise C: Scroll-Safe Input
-//
-// A quantity you change by clicking Edit. Number inputs change their value
-// when you scroll over them while they have focus, so someone scrolling down
-// the page could change the quantity without noticing. While the input has
-// focus, the wheel is supposed to do nothing at all.
-//
-// Click Edit, keep the mouse over the number and scroll. The number changes.
-//
-// Done when:
-//   - scrolling over the focused input never changes the number, however
-//     often you open and close the editor
-//   - closing the editor leaves no wheel listener behind
-//   - the code that adds the listener doesn't need to know why the <div>
-//     comes and goes: if the <div> gets another reason to appear or
-//     disappear later, that code doesn't change
-// ---------------------------------------------------------------------------
-
-export const ScrollSafeInput: FunctionComponent<{
-  value: number;
-  onChange: (value: number) => void;
-}> = ({ value, onChange }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Swallow wheel events while the input has focus
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const listener = (event: WheelEvent) => {
-      if (container.matches(":focus-within")) {
-        event.preventDefault();
-      }
-    };
-
-    container.addEventListener("wheel", listener, { passive: false });
-    return () => container.removeEventListener("wheel", listener);
-  }, []);
-
-  if (!isEditing) {
-    return (
-      <p>
-        Quantity: {value} <button onClick={() => setIsEditing(true)}>Edit</button>
-      </p>
-    );
-  }
-
-  return (
-    <div ref={containerRef}>
-      <input
-        type="number"
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <button onClick={() => setIsEditing(false)}>Done</button>
-    </div>
   );
 };

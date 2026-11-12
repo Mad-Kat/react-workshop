@@ -74,7 +74,61 @@ export const FancyInputDemo: FunctionComponent = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Solution B: Hint Bubble
+// Solution B: Scroll-Safe Input
+//
+// The effect ran once, on mount, when the editor was closed and there was no
+// <div> to attach to. A ref callback is tied to the node instead of to the
+// component: React calls it when the <div> is attached, and since it returns
+// a cleanup function (React 19+), calls that cleanup when the <div> is
+// detached. However often the editor opens and closes, the listener comes
+// and goes with the <div>, and nothing here mentions `isEditing`.
+//
+// The callback has to keep its identity between renders. A new function on
+// every render would make React detach and re-attach the listener each time.
+// This one uses nothing from the component, so it lives at module level. One
+// that needs props or state would go into useCallback.
+// ---------------------------------------------------------------------------
+
+const swallowWheelWhileFocused = (container: HTMLDivElement) => {
+  const listener = (event: WheelEvent) => {
+    if (container.matches(":focus-within")) {
+      event.preventDefault();
+    }
+  };
+
+  container.addEventListener("wheel", listener, { passive: false });
+  return () => container.removeEventListener("wheel", listener);
+};
+
+export const ScrollSafeInput: FunctionComponent<{
+  value: number;
+  onChange: (value: number) => void;
+}> = ({ value, onChange }) => {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (!isEditing) {
+    return (
+      <p>
+        Quantity: {value} <button onClick={() => setIsEditing(true)}>Edit</button>
+      </p>
+    );
+  }
+
+  return (
+    <div ref={swallowWheelWhileFocused}>
+      <input
+        type="number"
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <button onClick={() => setIsEditing(false)}>Done</button>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Solution C (optional): Hint Bubble
 //
 // The bubble's height only exists once the bubble is in the DOM, and during
 // render it isn't yet: on the first render `bubbleRef.current` is null. So
@@ -155,60 +209,6 @@ export const HintButton: FunctionComponent<{
       </button>
       {targetRect && <HintBubble targetRect={targetRect}>{hint}</HintBubble>}
     </>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Solution C: Scroll-Safe Input
-//
-// The effect ran once, on mount, when the editor was closed and there was no
-// <div> to attach to. A ref callback is tied to the node instead of to the
-// component: React calls it when the <div> is attached, and since it returns
-// a cleanup function (React 19+), calls that cleanup when the <div> is
-// detached. However often the editor opens and closes, the listener comes
-// and goes with the <div>, and nothing here mentions `isEditing`.
-//
-// The callback has to keep its identity between renders. A new function on
-// every render would make React detach and re-attach the listener each time.
-// This one uses nothing from the component, so it lives at module level. One
-// that needs props or state would go into useCallback.
-// ---------------------------------------------------------------------------
-
-const swallowWheelWhileFocused = (container: HTMLDivElement) => {
-  const listener = (event: WheelEvent) => {
-    if (container.matches(":focus-within")) {
-      event.preventDefault();
-    }
-  };
-
-  container.addEventListener("wheel", listener, { passive: false });
-  return () => container.removeEventListener("wheel", listener);
-};
-
-export const ScrollSafeInput: FunctionComponent<{
-  value: number;
-  onChange: (value: number) => void;
-}> = ({ value, onChange }) => {
-  const [isEditing, setIsEditing] = useState(false);
-
-  if (!isEditing) {
-    return (
-      <p>
-        Quantity: {value} <button onClick={() => setIsEditing(true)}>Edit</button>
-      </p>
-    );
-  }
-
-  return (
-    <div ref={swallowWheelWhileFocused}>
-      <input
-        type="number"
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <button onClick={() => setIsEditing(false)}>Done</button>
-    </div>
   );
 };
 

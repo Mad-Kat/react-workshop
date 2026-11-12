@@ -95,19 +95,19 @@ Also referenced:
 
 ## Exercise 07: DOM Refs & the Safe Mutation Window
 
-| Exercise            | Pattern                                      | Original File                                                   |
-| ------------------- | -------------------------------------------- | --------------------------------------------------------------- |
-| A — FancyInput      | ref as prop (React 19) + useImperativeHandle | `libraries/community-comment-form/src/communityCommentForm.tsx` |
-| B — HintBubble      | Measure before paint with useLayoutEffect    | Generic pattern (tooltip / popover placement)                   |
-| C — ScrollSafeInput | Ref callback with cleanup return (React 19)  | `blocks/form/src/components/inputField/inputField.tsx`          |
+| Exercise                  | Pattern                                      | Original File                                                   |
+| ------------------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| A — FancyInput            | ref as prop (React 19) + useImperativeHandle | `libraries/community-comment-form/src/communityCommentForm.tsx` |
+| B — ScrollSafeInput       | Ref callback with cleanup return (React 19)  | `blocks/form/src/components/inputField/inputField.tsx`          |
+| C — HintBubble (optional) | Measure before paint with useLayoutEffect    | Generic pattern (tooltip / popover placement)                   |
 
-**Format:** Problem + `Done when:` list, like 04 and 06. A is build-from-scratch: the Focus and Clear buttons do nothing, and participants add the `ref` prop and `useImperativeHandle`. B and C are bugs to fix. `exercise.test.tsx` runs the lists in the browser: 8 of 10 fail on `exercise.tsx`, all 10 pass on `solution.tsx`. A `useEffect` fix for B fails exactly one test, "never seen anywhere else".
+**Format:** Problem + `Done when:` list, like 04 and 06. A is build-from-scratch: the Focus and Clear buttons do nothing, and participants add the `ref` prop and `useImperativeHandle`. B and C are bugs to fix. `exercise.test.tsx` runs the lists in the browser: 8 of 10 fail on `exercise.tsx`, all 10 pass on `solution.tsx`. C is optional: skip it if time is short. A `useEffect` fix for C fails exactly one test, "never seen anywhere else".
 
 **A:** Show the old `forwardRef` wrapper for context. It still works and the codebase uses it in many places, but React 19 doesn't need it and plans to deprecate it. New code should use ref-as-prop. Worth discussing: lifting the value into the form is the more "React" answer when the form needs the value. The handle is for things that aren't state (focus, scroll, media).
 
-**B:** The starting code reads `bubbleRef.current?.offsetHeight` during render, which is `null` on the bubble's first render, so the bubble covers the button. Expected route: `useEffect` + state → visible flash → `useLayoutEffect`. `HintBubble` busy-waits 150ms per render so the flash lasts long enough to see. The bubble is opened by **hover on purpose**: for discrete events (click, keydown) React flushes passive effects before paint, so a click-triggered version would not flash with `useEffect` and the demo would fall flat. The reading of `getBoundingClientRect()` in `onMouseEnter` is the "safe in event handlers" half of the mental model. To show the flip, scroll the buttons to the top of the window. The wrapper has a spacer for that.
+**B:** The editor's `<div>` only exists after clicking Edit, so the `[]` effect finds `null` and never attaches the listener. `[isEditing]` deps also pass the tests. The guide covers it as the fragile alternative, and the last `Done when` line rules it out. Demo in **Chrome**: as far as we know, other browsers may not change a focused number input on wheel, so the bug shows nothing there. React 19 nuance worth stating precisely: a ref callback is only spared the `null` call when it returns a cleanup function. Without one, React 19 still calls it with `null` on detach.
 
-**C:** The editor's `<div>` only exists after clicking Edit, so the `[]` effect finds `null` and never attaches the listener. `[isEditing]` deps also pass the tests. The guide covers it as the fragile alternative, and the last `Done when` line rules it out. Demo in **Chrome**: as far as we know, other browsers may not change a focused number input on wheel, so the bug shows nothing there. React 19 nuance worth stating precisely: a ref callback is only spared the `null` call when it returns a cleanup function. Without one, React 19 still calls it with `null` on detach.
+**C (optional):** The starting code reads `bubbleRef.current?.offsetHeight` during render, which is `null` on the bubble's first render, so the bubble covers the button. Expected route: `useEffect` + state → visible flash → `useLayoutEffect`. `HintBubble` busy-waits 150ms per render so the flash lasts long enough to see. The bubble is opened by **hover on purpose**: for discrete events (click, keydown) React flushes passive effects before paint, so a click-triggered version would not flash with `useEffect` and the demo would fall flat. The reading of `getBoundingClientRect()` in `onMouseEnter` is the "safe in event handlers" half of the mental model. To show the flip, scroll the buttons to the top of the window. The wrapper has a spacer for that.
 
 ---
 
