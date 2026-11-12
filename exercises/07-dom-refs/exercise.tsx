@@ -7,6 +7,7 @@
  *
  * Key reading:
  *   - https://react.dev/learn/manipulating-the-dom-with-refs
+ *   - https://react.dev/reference/react/useImperativeHandle
  *   - https://react.dev/reference/react/useLayoutEffect
  *
  * `npm test` runs the "Done when" lists below in your browser.
