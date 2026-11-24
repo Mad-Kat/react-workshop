@@ -5,40 +5,23 @@
 
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
+import { type SearchResult, searchProducts } from "./api";
 
 // ---------------------------------------------------------------------------
-// Shared types and API (same as exercise)
+// Solution A: Product Search
+//
+// Every keystroke starts a search, and nothing ties a response to the query
+// it was for: whichever answer arrives last wins, and the slowest one is for
+// the shortest, oldest query. React already knows when a search stops being
+// wanted: it runs the effect's cleanup before it runs the effect for the next
+// query, and when the component goes away. So the cleanup flips a flag that
+// only this run of the effect can see, and a response that finds the flag set
+// does nothing at all. Not setResults, and not setIsLoading either: the
+// current run has set isLoading to true and will set it back when its own
+// response arrives.
 // ---------------------------------------------------------------------------
 
-interface SearchResult {
-  id: string;
-  name: string;
-  price: number;
-}
-
-const searchProducts = async (query: string, signal?: AbortSignal): Promise<SearchResult[]> => {
-  const delay = Math.floor(Math.random() * 450) + 50;
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, delay);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(timeout);
-      reject(new DOMException("Aborted", "AbortError"));
-    });
-  });
-
-  if (!query) return [];
-  return [
-    { id: `${query}-1`, name: `${query} sneakers`, price: 89.9 },
-    { id: `${query}-2`, name: `${query} boots`, price: 149.9 },
-    { id: `${query}-3`, name: `${query} sandals`, price: 49.9 },
-  ];
-};
-
-// ---------------------------------------------------------------------------
-// Solution A: useProductSearch with ignore flag
-// ---------------------------------------------------------------------------
-
-function useProductSearch(query: string): {
+export function useProductSearch(query: string): {
   results: SearchResult[];
   isLoading: boolean;
 } {
@@ -54,20 +37,14 @@ function useProductSearch(query: string): {
 
     let ignore = false;
     setIsLoading(true);
-
     searchProducts(query).then((data) => {
-      // When ignore=true (stale effect), we skip both setResults AND setIsLoading.
-      // isLoading stays true — but that's correct: the CURRENT effect already set
-      // isLoading(true) and will call setIsLoading(false) when its fetch resolves.
-
-      // Only update if this effect hasn't been cleaned up
       if (!ignore) {
         setResults(data);
         setIsLoading(false);
       }
     });
 
-    // Cleanup: mark this request as stale
+    // The next query, or unmounting, makes this run's response stale
     return () => {
       ignore = true;
     };
@@ -76,11 +53,26 @@ function useProductSearch(query: string): {
   return { results, isLoading };
 }
 
+export const ProductSearch: FunctionComponent = () => {
+  const [query, setQuery] = useState("");
+  const { results, isLoading } = useProductSearch(query);
+
+  return (
+    <SearchForm query={query} onQueryChange={setQuery} results={results} isLoading={isLoading} />
+  );
+};
+
 // ---------------------------------------------------------------------------
-// Solution B: useProductSearchWithAbort using AbortController
+// Solution B: Cancellable Product Search
+//
+// Same moment, stronger action: the cleanup aborts the search instead of
+// marking it ignored. An aborted search never resolves, so `.then` only ever
+// sees the current query's results and needs no flag. It rejects with an
+// AbortError instead, which is the expected outcome of the cleanup, not a
+// failure, so the `.catch` swallows that one and nothing else.
 // ---------------------------------------------------------------------------
 
-function useProductSearchWithAbort(query: string): {
+export function useCancellableProductSearch(query: string): {
   results: SearchResult[];
   isLoading: boolean;
 } {
@@ -96,112 +88,82 @@ function useProductSearchWithAbort(query: string): {
 
     const controller = new AbortController();
     setIsLoading(true);
-
     searchProducts(query, controller.signal)
-      // No ignore guard needed here: if cleanup ran, controller.abort() causes
-      // the promise to reject (AbortError → caught below), so .then() only
-      // fires for the current (non-aborted) request.
       .then((data) => {
         setResults(data);
         setIsLoading(false);
       })
-      .catch((err) => {
-        // Ignore abort errors — they're expected
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-        setIsLoading(false);
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        throw error;
       });
 
-    // Cleanup: abort the in-flight request
-    return () => {
-      controller.abort();
-    };
+    // The next query, or unmounting, cancels this run's search
+    return () => controller.abort();
   }, [query]);
 
   return { results, isLoading };
 }
 
-// ---------------------------------------------------------------------------
-// Consumer components (same as exercise)
-// ---------------------------------------------------------------------------
-
-export const ProductSearch: FunctionComponent = () => {
+export const CancellableProductSearch: FunctionComponent = () => {
   const [query, setQuery] = useState("");
-  const { results, isLoading } = useProductSearch(query);
+  const { results, isLoading } = useCancellableProductSearch(query);
 
   return (
-    <div>
-      <h2>Solution A: Ignore Flag</h2>
-      <input
-        type="text"
-        value={query}
-        placeholder="Search products..."
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      {isLoading && <p>Searching...</p>}
-      <ul>
-        {results.map((result) => (
-          <li key={result.id}>
-            {result.name} — CHF {result.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <SearchForm query={query} onQueryChange={setQuery} results={results} isLoading={isLoading} />
   );
 };
 
-export const ProductSearchAbort: FunctionComponent = () => {
-  const [query, setQuery] = useState("");
-  const { results, isLoading } = useProductSearchWithAbort(query);
+// ---------------------------------------------------------------------------
+// Unchanged
+// ---------------------------------------------------------------------------
 
-  return (
-    <div>
-      <h2>Solution B: AbortController</h2>
-      <input
-        type="text"
-        value={query}
-        placeholder="Search products..."
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      {isLoading && <p>Searching...</p>}
-      <ul>
-        {results.map((result) => (
-          <li key={result.id}>
-            {result.name} — CHF {result.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+const SearchForm: FunctionComponent<{
+  query: string;
+  onQueryChange: (query: string) => void;
+  results: SearchResult[];
+  isLoading: boolean;
+}> = ({ query, onQueryChange, results, isLoading }) => (
+  <div>
+    <input
+      type="text"
+      value={query}
+      placeholder="Search products..."
+      onChange={(e) => onQueryChange(e.target.value)}
+    />
+    {isLoading && <p>Searching...</p>}
+    <ul>
+      {results.map((result) => (
+        <li key={result.id}>
+          {result.name} — CHF {result.price.toFixed(2)}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
 
 /**
  * Key differences:
  *
  * Ignore flag:
- *   - Simple, works with any Promise-based API
- *   - The request still runs to completion — just the result is ignored
- *   - Sufficient for most cases
+ *   - Works with any promise, whether or not it can be cancelled
+ *   - The search still runs to the end; only its result is dropped
+ *   - Enough for most cases
  *
  * AbortController:
- *   - Actually cancels the request (saves bandwidth and server resources)
- *   - Works with fetch() natively, needs manual support for other APIs
- *   - Preferred when working with real HTTP requests
+ *   - Cancels the search itself, which saves the server and the network
+ *     the work
+ *   - fetch() takes a signal natively; other APIs have to support it
+ *   - Needs a .catch that tells an abort apart from a real failure
+ *   - If something after the response can't be aborted, keep the ignore
+ *     flag as well. The two combine fine.
  *
  * How Relay handles this:
- *   Relay's refetch() returns a Disposable. When you call refetch() again,
- *   the previous request is automatically disposed. You don't need manual
- *   cleanup — Relay manages the lifecycle. See:
+ *   Relay's refetch() returns a Disposable, and calling refetch() again
+ *   disposes the previous request for you. The race in this exercise is the
+ *   one Relay is solving behind your back. See:
  *   - libraries/cart/src/sidebar/lazy/shoppingCartSidebarContent.tsx
  *   - startTransition(() => refetch({}, { fetchPolicy: "store-and-network" }))
- *
- * >> INSTRUCTOR: React 19 added an `initialValue` parameter to useDeferredValue:
- * >>   const deferredQuery = useDeferredValue(query, '');
- * >> The initial render uses '' (instant), then schedules a re-render with the
- * >> real value. Combined with Suspense, this avoids showing a loading spinner
- * >> on the very first render. Mention this as a modern alternative to debouncing
- * >> for search-as-you-type UIs.
  *
  * Real codebase references:
  *   - domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts: polling with cleanup

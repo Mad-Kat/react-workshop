@@ -34,7 +34,7 @@ Each phase assumes the previous. You can't teach hydration mismatches (Exercise 
 | 05  | What Effects Are Actually For | Effects synchronize with external systems and nothing else                              |
 | 06  | Memoization Pitfalls          | Memoization is a performance optimization, not a correctness tool. Measure first        |
 | 07  | DOM Refs & Imperative Handle  | Safe to read/mutate DOM in event handlers and effects, never during render              |
-| 08  | Race Conditions & Cleanup     | When a component re-renders before an async response arrives, the response is stale     |
+| 08  | Race Conditions & Cleanup     | A response belongs to the effect that asked for it. Once that's cleaned up, it's stale  |
 | 09  | Actions & the Action Prop     | Components own the transition, the optimistic state, and the pending UI                 |
 | 10  | Suspense with `use()`         | Suspense says "this subtree is waiting. Show a fallback until it's ready"               |
 | 11  | Error Boundaries              | Error boundaries catch rendering errors. They do NOT catch event handlers or async code |

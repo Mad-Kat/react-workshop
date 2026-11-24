@@ -113,14 +113,24 @@ Also referenced:
 
 ## Exercise 08: Race Conditions & Cleanup
 
-| Exercise                           | Pattern                                 | Original File                                                                        |
-| ---------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
-| A — useProductSearch (ignore flag) | Cleanup function sets `ignore = true`   | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (polling/cleanup) |
-| B — useProductSearchWithAbort      | AbortController for proper cancellation | Same pattern, with signal support                                                    |
-
-**Format:** Build from scratch. Participants are given the search API and consumer component, and must implement the hooks with proper cleanup.
+| Exercise                       | Pattern                                      | Original File                                                                        |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| A — Product Search             | Cleanup sets an `ignore` flag                | `domains/dutch-auction/src/auctionEvent/useAuctionStateUpdater.ts` (polling/cleanup) |
+| B — Cancellable Product Search | Cleanup aborts the request (AbortController) | Same pattern, with signal support                                                    |
 
 Also referenced: `libraries/cart/src/sidebar/lazy/shoppingCartSidebarContent.tsx` — Relay auto-management of race conditions
+
+**Source mapping is thin:** `useAuctionStateUpdater` is a polling hook and is already the source for 04 A and 05 C. If a real search-as-you-type hook turns up in the codebase, it is the better anchor for this row.
+
+**Format:** Problem + `Done when:` list, like 04, 06 and 07. Both parts are bugs to fix: `useProductSearch` and `useCancellableProductSearch` start out as the same naive effect with no cleanup. `api.ts` holds the fake search and the counters the wrapper shows (sent / answered / aborted). `exercise.test.tsx` runs the lists in the browser on fake timers: 10 of 12 fail on `exercise.tsx` (the plain "empty box" test in each part passes from the start), all 12 pass on `solution.tsx`.
+
+**The race is deterministic on purpose.** Latency depends on query length: one letter 2s, two letters 1s, anything longer 300ms. Typing "shoes" in under ~1.7s always ends with the list showing "s", after showing "shoes" first, so the demo works on the first try. Tell people to type, not paste: a paste is one change and starts one search. "Searching..." is also wrong in the starting code: the answer for "sho" switches it off while "shoes" is still on its way.
+
+**A:** Expected route is the ignore flag. A debounce alone is the tempting fix and fails two tests ("Searching...", and emptying the box mid-search); the guide's repro for why is "type s, pause, type hoes". Deriving `isLoading` from a stored `{ query, results }` (Exercise 02) also passes everything and is worth showing if someone finds it. With the ignore flag alone, A's counters still read 5 answered for "shoes": that's the bridge to B.
+
+**B:** Same moment (cleanup), stronger action. Points to land: the `.catch` must swallow only `AbortError` and rethrow the rest; the abort also runs on unmount ("Hide search" in the wrapper). An ignore flag in B passes A's list but fails the two abort tests.
+
+**Discussion:** Relay's `refetch()` returns a Disposable and disposes the previous one, which is this race being solved for you. React 19's `useDeferredValue(query, "")` (initial value) is a modern alternative to debouncing for search-as-you-type UIs, and combined with Suspense it avoids a spinner on the very first render. Exercise 10 picks this up.
 
 ---
 

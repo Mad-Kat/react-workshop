@@ -2,181 +2,147 @@
  * Exercise 08: Race Conditions & Cleanup
  * ========================================
  *
- * Mental model: When a component fires an async request and re-renders
- * before the response arrives, the response is stale.
- *
- * If you get stuck, open guide.md for step-by-step thinking.
+ * Mental model: A response belongs to the effect that asked for it. Once that
+ * effect has been cleaned up, its response is stale.
  *
  * Key reading: https://react.dev/learn/synchronizing-with-effects#fetching-data
  *
- * FORMAT: Build from scratch
- * You are given: the API, the hook interface, and the consumer component.
- * You implement: the useEffect body with proper cleanup.
+ * `npm test` runs the "Done when" lists below in your browser.
  */
 
 import type { FunctionComponent } from "react";
 import { useEffect, useState } from "react";
+import { type SearchResult, searchProducts } from "./api";
 
 // ---------------------------------------------------------------------------
-// PROVIDED: Types and fake API (don't modify)
-// ---------------------------------------------------------------------------
-
-interface SearchResult {
-  id: string;
-  name: string;
-  price: number;
-}
-
-// Simulates an API with random latency (50-500ms).
-// Accepts an optional AbortSignal for cancellation.
-const searchProducts = async (query: string, signal?: AbortSignal): Promise<SearchResult[]> => {
-  const delay = Math.floor(Math.random() * 450) + 50;
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, delay);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(timeout);
-      reject(new DOMException("Aborted", "AbortError"));
-    });
-  });
-
-  if (!query) return [];
-  return [
-    { id: `${query}-1`, name: `${query} sneakers`, price: 89.9 },
-    { id: `${query}-2`, name: `${query} boots`, price: 149.9 },
-    { id: `${query}-3`, name: `${query} sandals`, price: 49.9 },
-  ];
-};
-
-// ---------------------------------------------------------------------------
-// Exercise A: Implement useProductSearch (ignore flag approach)
+// Exercise A: Product Search
 //
-// Build a hook that:
-//   1. Fetches search results when the query changes
-//   2. Returns [] when query is empty (without fetching)
-//   3. Prevents stale responses from overwriting newer results
+// `useProductSearch` searches as you type and hands back the results for
+// what's in the box, and whether they are still on their way. An empty box
+// means no results and no search. Short queries match more products, so they
+// take longer: a one-letter search takes 2 seconds (see api.ts).
 //
-// Start by implementing WITHOUT cleanup — observe the flickering.
-// Then add cleanup using an ignore flag.
+// Type "shoes" quickly. The results for "shoes" show up, and a moment later
+// the list switches back to "sh" and then "s", and stays there.
 //
-// Questions to think about:
-//   - Why does the cleanup function run when query changes?
-//   - Each effect invocation creates its own `ignore` — why?
-//   - What happens to isLoading when a stale response is ignored?
+// Done when:
+//   - once the searches are done, the list shows the results for what's in
+//     the box, however fast you type
+//   - once results for a query are on screen, results for an older query
+//     never replace them
+//   - "Searching..." shows exactly while the results for what's in the box
+//     are on their way
+//   - an empty box shows no results and sends no search, even when you
+//     empty it while a search is running
 // ---------------------------------------------------------------------------
 
-function useProductSearch(query: string): {
+export function useProductSearch(query: string): {
   results: SearchResult[];
   isLoading: boolean;
 } {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // TODO: implement the effect with proper cleanup
-  // Remember: the effect should handle the case where query is empty
-  //
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    setIsLoading(true);
     if (!query) {
       setResults([]);
-    } else {
-      searchProducts(query).then((data) => {
-        setResults(data);
-      });
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
-  }, [query, isLoading]);
+
+    setIsLoading(true);
+    searchProducts(query).then((data) => {
+      setResults(data);
+      setIsLoading(false);
+    });
+  }, [query]);
 
   return { results, isLoading };
 }
-
-// ---------------------------------------------------------------------------
-// Exercise B: Implement useProductSearchWithAbort (AbortController)
-//
-// Same goal as Exercise A, but actually cancel the in-flight request.
-//
-// Step 1: Create `new AbortController()` at the start of the effect
-// Step 2: Pass `controller.signal` to searchProducts
-// Step 3: In cleanup, call `controller.abort()`
-// Step 4: Catch AbortError and ignore it — abort errors are expected,
-//         not bugs. Check: `err instanceof DOMException && err.name === "AbortError"`
-//
-// Trade-off: ignore flag is simpler; AbortController saves bandwidth.
-// ---------------------------------------------------------------------------
-
-function useProductSearchWithAbort(query: string): {
-  results: SearchResult[];
-  isLoading: boolean;
-} {
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // TODO: implement with AbortController
-
-  return { results, isLoading };
-}
-
-// ---------------------------------------------------------------------------
-// PROVIDED: Consumer component (don't modify)
-//
-// This component uses your hook. Type "shoes" quickly — if your cleanup
-// is correct, only the final result for "shoes" should appear.
-// If cleanup is missing, you'll see results flickering between
-// "s", "sh", "sho", "shoe", and "shoes".
-// ---------------------------------------------------------------------------
 
 export const ProductSearch: FunctionComponent = () => {
   const [query, setQuery] = useState("");
   const { results, isLoading } = useProductSearch(query);
 
   return (
-    <div>
-      <h2>Exercise A: Ignore Flag</h2>
-      <input
-        type="text"
-        value={query}
-        placeholder="Search products... (try typing 'shoes' quickly)"
-        onChange={(e) => setQuery(e.target.value)}
-      />
-
-      {isLoading && <p>Searching...</p>}
-
-      <ul>
-        {results.map((result) => (
-          <li key={result.id}>
-            {result.name} — CHF {result.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <SearchForm query={query} onQueryChange={setQuery} results={results} isLoading={isLoading} />
   );
 };
 
-export const ProductSearchAbort: FunctionComponent = () => {
+// ---------------------------------------------------------------------------
+// Exercise B: Cancellable Product Search
+//
+// `useCancellableProductSearch` starts out where `useProductSearch` started.
+// Once A works, stale results no longer reach the screen, but every search
+// still runs to the end. Type "shoes" in A and watch the counters: all five
+// searches are answered, including the 2-second one for "s" that nobody is
+// waiting for any more. `searchProducts` can be cancelled: it takes an
+// AbortSignal.
+//
+// Done when:
+//   - everything on A's list holds here too
+//   - a search for a query that is no longer in the box is aborted, not
+//     answered
+//   - hiding the search while a search is running aborts it
+// ---------------------------------------------------------------------------
+
+export function useCancellableProductSearch(query: string): {
+  results: SearchResult[];
+  isLoading: boolean;
+} {
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!query) {
+      setResults([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    searchProducts(query).then((data) => {
+      setResults(data);
+      setIsLoading(false);
+    });
+  }, [query]);
+
+  return { results, isLoading };
+}
+
+export const CancellableProductSearch: FunctionComponent = () => {
   const [query, setQuery] = useState("");
-  const { results, isLoading } = useProductSearchWithAbort(query);
+  const { results, isLoading } = useCancellableProductSearch(query);
 
   return (
-    <div>
-      <h2>Exercise B: AbortController</h2>
-      <input
-        type="text"
-        value={query}
-        placeholder="Search products... (try typing 'shoes' quickly)"
-        onChange={(e) => setQuery(e.target.value)}
-      />
-
-      {isLoading && <p>Searching...</p>}
-
-      <ul>
-        {results.map((result) => (
-          <li key={result.id}>
-            {result.name} — CHF {result.price.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <SearchForm query={query} onQueryChange={setQuery} results={results} isLoading={isLoading} />
   );
 };
+
+// ---------------------------------------------------------------------------
+// The search box and the list. Both parts use it as is.
+// ---------------------------------------------------------------------------
+
+const SearchForm: FunctionComponent<{
+  query: string;
+  onQueryChange: (query: string) => void;
+  results: SearchResult[];
+  isLoading: boolean;
+}> = ({ query, onQueryChange, results, isLoading }) => (
+  <div>
+    <input
+      type="text"
+      value={query}
+      placeholder="Search products..."
+      onChange={(e) => onQueryChange(e.target.value)}
+    />
+    {isLoading && <p>Searching...</p>}
+    <ul>
+      {results.map((result) => (
+        <li key={result.id}>
+          {result.name} — CHF {result.price.toFixed(2)}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
